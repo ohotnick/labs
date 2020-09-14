@@ -3,7 +3,8 @@ module top_tb6;
 bit clk;
 bit reset;
  
-parameter WIDTH = 5; 
+parameter WIDTH  = 5;
+parameter AN_VAR = 0; //another variant 0 - data_val_i_t const/ 1 - data_val_i_t vary
 
 logic [WIDTH-1:0]           data_i_t;                      //data in
 logic                       data_val_i_t;
@@ -22,88 +23,48 @@ initial
     @( posedge clk )
       reset <= 1'b0;
   end
- 
- /*
-initial
-  begin
-    #300; 
-    @( posedge clk )
-      begin
-        data_i_t     <= 5'b00100;  
-        data_val_i_t <= 1; 
-	  end   
-    @( posedge clk )   
-      begin
-	    $display( "input  1data: %b"  , data_i_t     );
-	    $display( "input  valid: %b"  , data_val_i_t );
-	  end
-    @( posedge clk )
-      begin
-        data_i_t     <= 5'b10101;  
-        data_val_i_t <= 1;   
-	  end  
-    @( posedge clk )
-      begin
-	    $display( "output  data:%d"    , data_o_t     );
-	    $display( "output valid: %b\n" , data_val_o_t );
-	  
-	    $display( "input  2data: %b"   , data_i_t     );
-	    $display( "input  valid: %d"   , data_val_i_t );
-	  end
-    @( posedge clk )
-      begin
-        data_i_t     <= 5'b00100;  
-        data_val_i_t <= 0;
-	  end  
-    @( posedge clk )
-      begin
-	    $display( "output  data:%d"    , data_o_t     );
-	    $display( "output valid: %b\n" , data_val_o_t );
-	  
-	    $display( "input  3data: %b"   , data_i_t     );
-	    $display( "input  valid: %d"   , data_val_i_t );
-	  end
-    @( posedge clk )
-      begin
-        data_i_t     <= 5'b11111;  
-        data_val_i_t <= 1;
-	  end  
-	@( posedge clk )
-	  begin
-	    $display( "output  data:%d"    , data_o_t     );
-	    $display( "output valid: %b\n" , data_val_o_t );
-	  
-	    $display( "input  4data: %b"   , data_i_t     );
-	    $display( "input  valid: %d"   , data_val_i_t );
-	  end	
-	@( posedge clk )
-	@( posedge clk )
-	  begin
-	    $display( "output  data:%d"    , data_o_t     );
-	    $display( "output valid: %b\n" , data_val_o_t );
-	  end
-
-  end 
-*/  
+  
   //-----------------------------
 logic [WIDTH-1:0] ref_queue [$];
 logic [WIDTH-1:0] result_queue [$];
 
+logic [WIDTH:0] ref_queue_c;
+logic [WIDTH:0] result_queue_c;
+logic [WIDTH:0] compare_queue_c;
+logic bbb1;
+
 task send ( logic [WIDTH-1:0] value );
 
   @( posedge clk );
-  data_val_i_t   <= 1'b1;
-  data_i_t       <= value;
-  ref_queue.push_back( value );
-  
+  if ( AN_VAR == 0 )
+  data_val_i_t   = 1'b1;
+  else
+    begin
+      if( value & 1 )
+        data_val_i_t   = 1'b1;
+      else
+        data_val_i_t   = 1'b0;
+    end
+  data_i_t       = value;
+  if( data_val_i_t )
+  begin
+    ref_queue.push_back( value );
+    ref_queue_c = ref_queue_c + 1;
+	$display( "ref_queue N%d: %b\n" , ref_queue_c, value );
+  end	
 endtask
 
 
 task get ( );
-
+  
   @( posedge clk );
-  if( data_val_o_t )
+  if( data_val_o_t && ( ref_queue_c != result_queue_c ) )
+  begin
     result_queue.push_back( data_o_t );
+	result_queue_c = result_queue_c + 1;
+	$display( "result_queue N%d: %d\n" , result_queue_c, data_o_t );
+  end	
+  
 endtask
 
 
@@ -119,38 +80,48 @@ while( result_queue.size() != 0 )
        $error("Extra data from DUT");
     else
       begin
-        result = result_queue.pop_front();
+        result     = result_queue.pop_front();
         ref_result = $countones( ref_queue.pop_front() );
+		compare_queue_c = compare_queue_c + 1;
+		$display( "%d, " , compare_queue_c );
         if( result != ref_result )
           $error("Data mismatch");
       end
   end
 endtask
 
-//выполнение параллельно тасков и дожидается пока одини выполнятся чтоб выполнить compare
 initial
   begin
-  #300
-		//$monitor( "output  data:%d"    , data_o_t     );
-	   // $display( "output valid: %b\n" , data_val_o_t );
-	  
-	    $monitor( "input  4data: %b \ninput  valid: %d \noutput  data:%d \noutput valid: %b\n\n"   , data_i_t, data_val_i_t, data_o_t, data_val_o_t );
-	  //  $monitor( "input  valid: %d"   , data_val_i_t ); 
-  
-  
-  
+    #500
+    $monitor( "input  data: %b \ninput  valid N%d: %d \noutput  data:%d \noutput valid N%d: %b\n\n"   , data_i_t, ref_queue_c , data_val_i_t, data_o_t, result_queue_c , data_val_o_t );
+    ref_queue_c     = 0;
+    result_queue_c  = 0;
+    compare_queue_c = 0;
+    bbb1 = 0;
+	
     fork
       begin
- //     for (int i = 0; i < WIDTH; i++)
-        for (int i = 0; i < 4; i++)
-          send( i );
-      end
+        forever
+          begin
+            get();
+		    if ( bbb1 == 1 && (result_queue_c == ref_queue_c))
+		      break;
+		  end  
+      end	
       begin
-         forever
-           get();
+        for (int i = 0; i < 2**WIDTH; i++)
+		  begin
+            send( i );
+          end   
+		  bbb1 = 1;  
       end
-    join_any
-    compare( ref_queue, result_queue );
+	join
+	  begin
+	    $display( "compare_queue_c: " );
+        compare( ref_queue, result_queue );
+      end
+	
+	$display( "get, send, compare: %d,%d ,%d  \n" , result_queue_c, ref_queue_c, compare_queue_c);
   end
   
   

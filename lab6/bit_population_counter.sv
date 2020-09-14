@@ -16,11 +16,7 @@ logic [($clog2(WIDTH)+1):0] data_o_p;
 logic                       data_val_o_p;
 
 logic [WIDTH-1:0]           data_i_p_b;
-logic [WIDTH-1:0]           data_i_p_b2;
 logic [WIDTH-1:0]           data_i_p;
-logic                       data_val_i_p;
-
-
 
 always_ff @( posedge clk_i )		// ---------------------
   begin
@@ -28,37 +24,20 @@ always_ff @( posedge clk_i )		// ---------------------
       begin
         data_val_o_p <= 0;
         data_i_p     <= 0;
-		data_val_i_p <= 0;
       end
     else									
       begin
-       data_i_p <= data_i;
-	   data_val_i_p <= data_val_i;
-         if( data_val_i_p == 1 )
-           data_val_o_p <= 1;
-         else
-           data_val_o_p <= 0;
+       data_i_p     <= data_i;
+	   data_val_o_p <= data_val_i;
       end   								
   end   							// always_ff
 
 always_comb					
   begin
-    if( data_val_o_p == 1 )
-      begin
-        for ( int i = 0; i < ( WIDTH ); i++ )
-	      begin
-            if( i == 0 )	
-              begin	
-                data_i_p_b2 = 1;	
-                data_o_p    = 0;
-              end		
-            data_i_p_b = (data_i_p_b2) << i;
-            if( (data_i_p & data_i_p_b) >= 1 )
-              data_o_p = data_o_p + 1;
-          end
-      end
-    else
-      data_o_p=0;
+    data_o_p = 0;
+    for(int i = 0; i < ( WIDTH ); i++ )
+      if( data_i_p[i])
+        data_o_p += 1;
   end
 
 assign data_o     = data_o_p;
