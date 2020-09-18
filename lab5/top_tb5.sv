@@ -29,32 +29,83 @@ initial
     reset<=1'b0;
   end
  
- 
+ /*
 initial
   begin
    #300; 
    @(posedge clk)
    data_i_t<=5'b00110;    
    @(posedge clk)   
-   @(posedge clk)
    data_i_t<=5'b11111; 
-   @(posedge clk)
    @(posedge clk)
    data_i_t<=5'b00000; 
 
   end  
+*/
+//-------------------------
+logic [WIDTH:0] send_c;
+logic [WIDTH:0] get_c;
+logic flag_b;
 
 
+task send ( logic [WIDTH-1:0] value );
+
+  @( posedge clk )
+  @( posedge clk )
+  begin
+  data_i_t = value;
+  send_c   = send_c + 1;
+  $display( "send N%d:       %b" , send_c, value );
+  end
+  
+endtask
+  
+task get ( );
+  
+  @( posedge clk )
+  @( posedge clk )
+  begin
+  get_c = get_c + 1;
+  $display( "get N%d:   left %b\n          right %b \n" , get_c, data_left_o_t, data_right_o_t );	
+  end
+  
+endtask
+ 
+
+initial
+  begin
+    #500 
+    send_c = 0;
+	get_c  = -1;
+	flag_b = 0;
+	
+	fork
+      begin
+        forever
+          begin
+            get();
+		    if ( flag_b == 1 )
+		      break;
+		  end  
+      end	
+      begin
+        for (int i = 0; i < 2**WIDTH; i++)
+		  begin
+            send( i );
+          end   
+		  flag_b = 1;  
+      end
+	join
+	  begin
+	    $display( "end ------- " );
+      end
+	  
+  end	  
   
   
 priority_encoder DUT 
 /*#(
-	.BLINK_HALF_PERIOD (2),
-	.GREEN_BLINKS_NUM (3),
-	.RED_YELLOW_TIME (3),
-	.RED_TIME_DEFAULT (3),
-	.YELLOW_TIME_DEFAULT (3),
-	.GREEN_TIME_DEFAULT (3)
+	.WIDTH (5)
 )*/
 (
 	.clk_i(clk),
