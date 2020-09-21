@@ -28,10 +28,10 @@ always_ff @( posedge clk_i )
   end   
 
 
-always_comb	                     				
+always_comb	                     			//left bit	
   begin
   
-    for( int i = 0; i < ( WIDTH ); i++ )     //left bit
+    for( int i = 0; i < ( WIDTH ); i++ )     
       if( data_i_tv[ i ] )
 	    begin
 		  data_left_o_tv      = 0;
@@ -39,8 +39,23 @@ always_comb
 		end
     if( data_i_tv == 0 )
       data_left_o_tv = 0;	
+	  
+  end	  
+	  
+always_comb	                     			//right bit	
+  begin	  
 
-    for( int j = 0; j < ( WIDTH ); j++ )     //right bit
+    for( int j = 0; j < ( WIDTH ); j++ )     
+      if( data_i_tv[ j ] )
+	    begin
+		  data_right_o_tv      = 0;
+          data_right_o_tv[ j ] = 1;
+		  break;
+		end
+    if( data_i_tv == 0 )
+      data_right_o_tv = 0;
+/*
+    for( int j = 0; j < ( WIDTH ); j++ )     
       if( data_i_tv[ WIDTH - j - 1 ] )
 	    begin
 		  data_right_o_tv = 0;
@@ -48,7 +63,7 @@ always_comb
 		end
     if( data_i_tv == 0 )
       data_right_o_tv = 0;
-
+*/
   end
 
 
