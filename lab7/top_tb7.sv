@@ -13,10 +13,9 @@ logic key_i_t;     //input button
 
 logic key_pressed_stb_o_t;					
 
-logic flag_b;
-int ttt;
-int   ttt1=0;
-int   ttt2=0;
+int   temp_v;
+int   temp_v1=0;
+int   temp_v2=0;
 
 
 
@@ -26,14 +25,14 @@ task send ( );
   
   for (int k = 0; k < GLITCH_TIME_NS_T; k++)
   begin
-    ttt = $urandom%20;
-    if( ttt > 14 )
+    temp_v = $urandom%20;
+    if( temp_v > 14 )
 	  key_i_t = 1;
 	else
       key_i_t = 0;
     #1000;	    
 	  
-    $display( "send %d" , ttt );
+    $display( "send %d" , temp_v );
   end
   key_i_t = 1;
   for (int k = 0; k < GLITCH_TIME_NS_T/(1000/CLK_FREQ_MHZ_T); k++)
@@ -50,7 +49,7 @@ task get ( );
 	 @( posedge clk )
      if( key_i_t == 1 )
 	   begin
-	     ttt1 = $time;
+	     temp_v1 = $time;
 		 break;
 	   end
     end
@@ -60,11 +59,11 @@ task get ( );
 	 @( posedge clk )
      if( key_pressed_stb_o_t == 1 )
 	   begin
-	     ttt2 = $time;
+	     temp_v2 = $time;
 		 break;
 	   end
     end
-  $display( "ttt1 %d:   ttt2 %d rez %d " , ttt1, ttt2, ttt2-ttt1);	
+  $display( "temp_v1 %d:   temp_v2 %d rez %d " , temp_v1, temp_v2, temp_v2-temp_v1);	
   
 endtask
 
@@ -73,7 +72,7 @@ endtask
 
 task compare ( int temp1, int temp2 );
 
-    if( ( ttt2 - ttt1 - 1000000/CLK_FREQ_MHZ_T ) == ( GLITCH_TIME_NS_T * 1000 ) )
+    if( ( temp_v2 - temp_v1 - 1000000/CLK_FREQ_MHZ_T ) == ( GLITCH_TIME_NS_T * 1000 ) )
       $display( "Glitch time is done" );
     else
       $error("no match of results");
@@ -86,7 +85,6 @@ endtask
 initial
   begin
     #500 
-	flag_b = 0;
     @( posedge clk )
 	key_i_t = 0;
     @( posedge clk )
@@ -102,7 +100,7 @@ initial
       end		  
 	join
 	  begin
-	    compare( ttt1, ttt2  );
+	    compare( temp_v1, temp_v2  );
 	    $display( "end ------- " );
 		$stop;
       end 
