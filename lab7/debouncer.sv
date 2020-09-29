@@ -13,6 +13,7 @@ parameter CLK_TIME_NS = 1000/CLK_FREQ_MHZ;
 parameter WIDTH    = GLITCH_TIME_NS/CLK_TIME_NS;
 
 logic key_pressed_stb_o_tv;
+logic key_i_tv;
 logic flag;
 logic [($clog2(WIDTH)+1):0]data_o_c;		//counter
 
@@ -21,21 +22,23 @@ logic [($clog2(WIDTH)+1):0]data_o_c;		//counter
 
 always_ff @( posedge clk_i )		
   begin
-    if( key_i != 1 || key_i== 1 )
+    key_i_tv <= key_i;
+  
+    if( key_i_tv != 1 || key_i_tv== 1 )
 	  begin
-        if( key_i == 0 && flag == 0 )
+        if( key_i_tv == 0 && flag == 0 )
           begin
             flag                 <=1;
             data_o_c            <=0;
             key_pressed_stb_o_tv <=0;
           end 
-        if( key_i == 0 )
+        if( key_i_tv == 0 )
           flag                 <=1;			  
 	  end
 	else
 	  data_o_c            <=0;  
 
-    if( flag== 1 && key_i == 1 )
+    if( flag== 1 && key_i_tv == 1 )
       begin
         data_o_c <= data_o_c + 1;
       end 
@@ -49,7 +52,7 @@ always_ff @( posedge clk_i )
       begin
         if( data_o_c >= ( WIDTH ) )
           begin
-            if( key_i == 1 )
+            if( key_i_tv == 1 )
 			  begin
                 key_pressed_stb_o_tv<=1;
                 flag<=0;

@@ -72,7 +72,7 @@ endtask
 
 task compare ( int temp1, int temp2 );
 
-    if( ( temp_v2 - temp_v1 - 1000000/CLK_FREQ_MHZ_T ) == ( GLITCH_TIME_NS_T * 1000 ) )
+    if( ( temp_v2 - temp_v1 - 2*1000000/CLK_FREQ_MHZ_T ) == ( GLITCH_TIME_NS_T * 1000 ) )
       $display( "Glitch time is done" );
     else
       $error("no match of results");
