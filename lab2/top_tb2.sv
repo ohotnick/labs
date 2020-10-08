@@ -135,7 +135,13 @@ initial
 			    //value_1_t = 65535;
 		         value_2_t = $urandom%16;
                  send( value_1_t, value_2_t ); 
+				//@(posedge clk)
+				begin
+				  data_i_t     = 1;
+	              data_val_i_t = 0;
+				end
 		       end
+			   
 			else
               begin			
 	            @(posedge clk)

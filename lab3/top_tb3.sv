@@ -33,6 +33,7 @@ initial
 
  
 logic flag_b;
+logic flag_send;
 
 logic [15:0] ref_queue [$];									
 logic [15:0] result_queue [$];
@@ -40,6 +41,8 @@ int compare_queue_c;
 
 // send data ------------
 task send ( logic [15:0] value_1, logic [4:0] value_2 );
+
+
 
     @(posedge clk)
     data_i_t_s     = value_1;
@@ -51,6 +54,8 @@ task send ( logic [15:0] value_1, logic [4:0] value_2 );
 	
 	ref_queue.push_back( value_1 );  
     $display( "send %b, valid %d", value_1, value_2 );
+	
+	flag_send = 1;
 
 endtask
 
@@ -63,7 +68,7 @@ task get (  );
       begin
 	    result_queue.push_back( ser_data_o_t_ds );
 	    $display( "get  %b" , ser_data_o_t_ds );
-		
+		flag_send = 0;
 	  end
 
 endtask
@@ -102,30 +107,21 @@ initial
    flag_b = 0;
    value_2_t = 0;
    compare_queue_c = 0;
+   flag_send = 0;
 
    fork
       begin                                  // send
-        for( int i = 0; i < ( 20 ); i++ )
+        for( int i = 0; i < ( 2000 ); i++ )
           begin   
-		   if( data_mod_i_t_s >= 3 )
-			 @(negedge busy_o_t_s)
+		   @(posedge clk)
+		   if( flag_send == 0 )
 	           begin
                  value_1_t = $urandom%65535;
-			    //value_1_t = 65535;
-		         //value_2_t = $urandom%16;
 				 value_2_t = 16;
                  send( value_1_t, value_2_t ); 
 		       end
-			else
-              begin			
-	            @(posedge clk)
-	            @(posedge clk)
-				@(posedge clk)
-                value_1_t = 65535;
-		        //value_2_t = $urandom%16;
-				value_2_t = 16;
-                send( value_1_t, value_2_t ); 
-              end
+			 if( flag_send == 1 )
+			   data_i_t_s = 1;
 		  end	
 		#5000;
 		flag_b = 1;

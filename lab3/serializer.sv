@@ -12,6 +12,7 @@ module serializer (
 );
 
 logic [15:0]data_i_tv;
+logic [15:0]data_i_tv_1;
 logic data_val_i_flag;
 logic data_val_i_tv;
 logic [4:0]data_mod_i_tv;
@@ -38,10 +39,11 @@ always_ff @( posedge clk_i )
 	  begin  //else
 	    data_mod_i_tv  <= data_mod_i;
 		data_val_i_tv  <= data_val_i;
+		data_i_tv_1    <= data_i;
 	
 	    if( data_val_i_tv == 1'b1 && data_val_i_flag != 1'b1) //take data, start work
 		  begin
-		    data_i_tv <= data_i;
+		    data_i_tv <= data_i_tv_1;
 		    if( data_mod_i_tv >= 3 )
 		      begin
 		        data_val_i_flag <= 1'b1;
