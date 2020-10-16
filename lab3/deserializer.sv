@@ -27,46 +27,46 @@ begin
   data_i_tv     <= data_i;
   data_val_i_tv <= data_val_i;
   
-  if(srst_i)					//если сброс
+  if(srst_i)                    //если сброс
     begin
-	  cnt            <= 0;
+      cnt            <= 0;
       flag           <= 0;
-	  ser_data_val_p <= 0;
-	  ser_data_o_p   <= 0;
-	  data_i_tv      <= 0;
-	  data_val_i_tv  <= 0;
-	end
+      ser_data_val_p <= 0;
+      ser_data_o_p   <= 0;
+      data_i_tv      <= 0;
+      data_val_i_tv  <= 0;
+    end
   else
     begin  //else
-		
-	if(flag!=1)
-	 begin
-	   cnt  <= 0;
+        
+    if(flag!=1)
+     begin
+       cnt  <= 0;
        flag <= 1;
-	   ser_data_val_p <= 0;
-	   ser_data_o_p   <= 0;
-	 end 
-	else
+       ser_data_val_p <= 0;
+       ser_data_o_p   <= 0;
+     end 
+    else
       begin
-	    if( data_val_i_tv == 1 )
-	      begin 
-	        cnt <= cnt + 1'b1;
-	        ser_data_o_p[DESER_W - cnt -1] <= data_i_tv;
-	
+        if( data_val_i_tv == 1 )
+          begin 
+            cnt <= cnt + 1'b1;
+            ser_data_o_p[DESER_W - cnt -1] <= data_i_tv;
+    
             if(cnt==(DESER_W-1))
-	          begin
-	            ser_data_val_p <= 1;
+              begin
+                ser_data_val_p <= 1;
                 flag           <= 0;
-	          end
+              end
           end
       end
-    end		
+    end     
 
 
-end		
+end     
 
-		assign ser_data_o   = ser_data_o_p;
-		assign ser_data_val = ser_data_val_p;
+        assign ser_data_o   = ser_data_o_p;
+        assign ser_data_val = ser_data_val_p;
 
 
 endmodule

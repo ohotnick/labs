@@ -3,18 +3,18 @@ bit clk;
 bit reset;
  
 initial 
-	forever 
-		#100 clk=!clk;
+    forever 
+        #100 clk=!clk;
 
 
 parameter DESER_W_T = 16;
 
 
-logic data_i_t;		//вход данные
+logic data_i_t;     //вход данные
 logic data_val_i_t;
 
-logic [(DESER_W_T-1):0]ser_data_o_t;			//вых данные
-logic ser_data_val_t;		//вых валид
+logic [(DESER_W_T-1):0]ser_data_o_t;            //вых данные
+logic ser_data_val_t;       //вых валид
 
 
 initial
@@ -36,7 +36,7 @@ initial
 logic flag_b;
 logic flag_send;
 
-logic [( DESER_W_T - 1 ):0] ref_queue [$];									
+logic [( DESER_W_T - 1 ):0] ref_queue [$];                                  
 logic [( DESER_W_T - 1 ):0] result_queue [$];
 int compare_queue_c;
 
@@ -85,10 +85,10 @@ while( result_queue.size() != 0 )
     else
       begin
         result     = result_queue.pop_front();
-        ref_result =  ref_queue.pop_front();	
-		compare_queue_c = compare_queue_c + 1;
-		$display( "%d, " , compare_queue_c );
-		$display( "send %b, get %b " , ref_result,result  );
+        ref_result =  ref_queue.pop_front();    
+        compare_queue_c = compare_queue_c + 1;
+        $display( "%d, " , compare_queue_c );
+        $display( "send %b, get %b " , ref_result,result  );
         if( result != ref_result )
           $error("Data mismatch");
       end
@@ -108,36 +108,35 @@ initial
       begin                                  // send
         for( int i = 0; i < ( 50 ); i++ )
           begin   
-		   @(posedge clk)
-		   $display( "send for------ " );
-		   if( flag_send == 0 )
-	           begin
+           @(posedge clk)
+           $display( "send for------ " );
+           if( flag_send == 0 )
+               begin
                  value_1_t = $urandom;
                  send( value_1_t ); 
-				 $display( "send for if------ " );
-				 i--;
-		       end
-			 if( flag_send == 1 )
-			   begin
-			     data_i_t = 0;
-               end				 
-			   
-		  end	
-		#5000;
-		flag_b = 1;
+                 $display( "send for if------ " );
+               end
+             if( flag_send == 1 )
+               begin
+                 data_i_t = 0;
+               end               
+               
+          end   
+        #5000;
+        flag_b = 1;
       end
       begin                                     //get
-	    forever
+        forever
           begin
               get(); 
-			  if ( flag_b == 1 )
-		        break;
-		  end
-      end		  
-	join
-	  begin
-	    compare( ref_queue, result_queue );
-	    $display( "end ------- " );
+              if ( flag_b == 1 )
+                break;
+          end
+      end         
+    join
+      begin
+        compare( ref_queue, result_queue );
+        $display( "end ------- " );
       end 
    #5000; 
    $stop;
@@ -147,14 +146,14 @@ initial
 deserializer #(
   .DESER_W ( DESER_W_T )
 ) DUT (
-	.clk_i(clk),
-	.srst_i(reset),
+    .clk_i(clk),
+    .srst_i(reset),
 
-	.data_i(data_i_t),
-	.data_val_i(data_val_i_t),
+    .data_i(data_i_t),
+    .data_val_i(data_val_i_t),
 
-	.ser_data_o(ser_data_o_t),
-	.ser_data_val(ser_data_val_t)
+    .ser_data_o(ser_data_o_t),
+    .ser_data_val(ser_data_val_t)
 );
   
 endmodule
