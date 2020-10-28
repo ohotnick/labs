@@ -21,70 +21,67 @@ logic [3:0]cnt;
 logic ser_data_o_p;
 logic ser_data_val_p;
 logic busy_o_p;
-
-
-
+ 
 always_ff @( posedge clk_i )
   begin
-    if( srst_i )                                     //reset
+    if( srst_i )
       begin
         data_val_i_flag   <= 1'b0;
-        busy_o_p          <= 1'b0;
         data_i_tv         <= 0;
-        ser_data_o_p      <= 1'b0;
-        ser_data_val_p    <= 1'b0;
+		ser_data_o_p      <= 1'b0;
         data_mod_i_tv     <= 0;
       end
     else
-      begin  //else
+      begin  //else  
         data_mod_i_tv  <= data_mod_i;
         data_val_i_tv  <= data_val_i;
         data_i_tv_1    <= data_i;
-        
-      end       //else
-  end       //always_ff
-  
-always_ff @( posedge clk_i )
-  begin
-    if( !srst_i )
-  
-      if( data_val_i_tv == 1'b1 && data_val_i_flag != 1'b1) //take data, start work
-        begin
-          data_i_tv <= data_i_tv_1;
-          if( data_mod_i_tv >= 3 )
-            begin
-              data_val_i_flag <= 1'b1;
-              cnt             <= 15 - data_mod_i_tv;
-            end
-        end
-  end  
-  
-always_ff @( posedge clk_i )
-  begin
-    if( !srst_i )
-  
-      if( data_val_i_flag == 1'b1 )                     //process
-        begin
-          busy_o_p       <= 1'b1;                               
-          ser_data_val_p <= 1'b1;
-        
-          cnt <=cnt + 1'b1;
-    
-          ser_data_o_p <= data_i_tv[15];
-          data_i_tv    <= data_i_tv << 1;
+        if( data_val_i_tv == 1'b1 && data_val_i_flag != 1'b1) //take data, start work
+          begin
+            data_i_tv <= data_i_tv_1;
+            if( data_mod_i_tv >= 3 )
+              begin
+                data_val_i_flag <= 1'b1;
+                cnt             <= 15 - data_mod_i_tv;
+              end
+          end
           
-          if( cnt == 15 )                                   //end process
-            begin
-              busy_o_p        <= 1'b0;
+        if( data_val_i_flag == 1'b1 )                     //process
+          begin   
+            cnt <=cnt + 1'b1;
+    
+            ser_data_o_p <= data_i_tv[15];
+            data_i_tv    <= data_i_tv << 1;
+            if( cnt == 15 )                                   //end process
+              begin
               data_val_i_flag <= 1'b0;
-              ser_data_o_p    <= 1'b0;
-              ser_data_val_p  <= 1'b0;
-            end
-        end
+			  ser_data_o_p    <= 1'b0;
+              end
+          end  
+      end
   end  
-  
-  
 
+always_ff @( posedge clk_i )
+  begin
+    if( srst_i )
+      begin
+        busy_o_p          <= 1'b0;
+        ser_data_val_p    <= 1'b0;
+      end
+    else
+      begin  //else  
+        if( data_val_i_flag == 1'b1 )                     //process
+          begin
+            busy_o_p       <= 1'b1;                               
+            ser_data_val_p <= 1'b1;
+            if( cnt == 15 )                                   //end process
+              begin
+                busy_o_p        <= 1'b0;
+                ser_data_val_p  <= 1'b0;
+              end
+          end 
+      end
+  end  
 
         assign ser_data_o   = ser_data_o_p;
         assign ser_data_val = ser_data_val_p;

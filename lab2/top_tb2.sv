@@ -62,24 +62,23 @@ endtask
 // get data ---------
 task get (  );
 
-  @(posedge clk)
-    if( data_mod_i_t >= 3 && ser_data_val_t == 1 )
-      flag_a = 1;
-    if( flag_a == 1 && ser_data_val_t == 0 )
+    if( ser_data_val_t == 0 )
       begin
-        $display( "get  %b" , value_get );
-        result_queue.push_back( value_get );
-        flag_a = 0;
+        if( flag_a == 1 )
+          begin 
+            $display( "get  %b" , value_get );
+            //$display( "get time  %d" , $time );
+            result_queue.push_back( value_get );
+            flag_a = 0;
+          end   
+        q = 15;
+        value_get = 0;
       end
 
-      if( data_val_i_t == 1 )
-        begin
-          q = 15;
-          value_get = 0;
-        end
-        
       if( ser_data_val_t == 1 ) 
         begin
+          flag_a = 1;
+          $display( "get time  %d" , $time );
           value_get[ q ] = ser_data_o_t;
           q = q - 1;
         end
@@ -103,7 +102,7 @@ while( result_queue.size() != 0 )
         ref_result =  ref_queue.pop_front();    
         compare_queue_c = compare_queue_c + 1;
         $display( "%d, " , compare_queue_c );
-        $display( "send %b, get %b " , result, ref_result );
+        $display( "send %b, get %b ", ref_result, result  );
         if( result != ref_result )
           $error("Data mismatch");
       end
@@ -158,16 +157,10 @@ initial
       begin                                     //get
         forever
           begin
-            if( data_mod_i_t >= 3 && ser_data_val_t == 1 )
-              flag_a = 1;
-            if( flag_a == 1 && ser_data_val_t == 0 )
-              begin
-                $display( "get  %b" , value_get );
-                flag_a = 0;
-              end
-              get(); 
-              if ( flag_b == 1 )
-                break;
+            @(posedge clk)
+            get(); 
+            if ( flag_b == 1 )
+              break;
           end
       end         
     join
