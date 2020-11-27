@@ -26,7 +26,7 @@ logic [(DWIDTH-1):0]q_o_tv;
 logic [(AWIDTH_EXP-1):0]usedw_o_tv;
 
 logic [1:0]count_empt;
-
+/*
 initial
   begin
     q_o_tv     <= 0;
@@ -35,7 +35,7 @@ initial
     usedw_o_tv <= 0;
     count_empt <= 0;
   end
-
+*/
 //------------------
 
 always_ff @( posedge clk_i )
@@ -46,9 +46,9 @@ always_ff @( posedge clk_i )
       end
     else
       begin
-         if(( empty_flag == 0 ) && ( rdreq_i == 1 ) && ( wrreq_i != 1 ))
+         if(( empty_flag == 0 ) && ( rdreq_i == 1 ) && ( wrreq_i == 0 ))
          begin
-          q_o_tv = ram[index_ram_start];
+          q_o_tv <= ram[index_ram_start];
           // $display( "index %d q_o=%d" , index_ram_start, q_o_tv );
           end
       end 
@@ -68,12 +68,12 @@ always_ff @( posedge clk_i )
             ram[index_ram_start] <= data_i;
             //$display( "index %d data_i=%d" , index_ram_start, data_i );
             if(index_ram_start != (AWIDTH-1))
-              index_ram_start <= index_ram_start + 1;
+              index_ram_start = index_ram_start + 1;
               
           end
         else if( ( empty_flag == 0 ) && ( rdreq_i == 1 )&& ( wrreq_i != 1 ))
            if(index_ram_start != 0) 
-            index_ram_start <= index_ram_start - 1;     
+            index_ram_start = index_ram_start - 1;     
       end 
   end
 
@@ -86,7 +86,7 @@ always_ff @( posedge clk_i )
     else
       begin
           
-         if(( full_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i != 1 ))       //write
+         if(( full_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i != 1 )&&( usedw_o_tv <(AWIDTH-1)))       //write
           usedw_o_tv <= usedw_o_tv + 1;
           else if(( empty_flag == 0 ) && ( rdreq_i == 1 )&& ( wrreq_i != 1 ))
           usedw_o_tv <= usedw_o_tv - 1;
@@ -122,9 +122,9 @@ always_ff @( posedge clk_i )
             if(( usedw_o_tv == ( AWIDTH - 1 ) ) && ( empty_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i != 1 ))
               full_flag <= 1;
           end
-        if(( empty_flag == 0 ) && ( rdreq_i == 1 ))
+        if(( empty_flag == 0 ) && ( rdreq_i == 1 )&& ( wrreq_i == 0 ))
           begin
-            if( usedw_o_tv == 0 )
+            if(( usedw_o_tv == ( AWIDTH - 1 ) ) && ( rdreq_i == 1 ))
               full_flag       <= 0;
             if(( usedw_o_tv == 1 ) && ( full_flag == 0 ) && ( wrreq_i == 0 ) && ( rdreq_i == 1 ))
               empty_flag <= 1;

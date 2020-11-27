@@ -45,7 +45,7 @@ initial
   
 initial
   begin
-    #600;  
+    #100; 
   end  
   
 // send data ------------
@@ -61,16 +61,20 @@ endtask
 task get (  );
   
   logic [(DWIDTH_T-1):0] temp_val;
-   
-  if((rdreq_i == 1) && (empty_o != 1) && (wrreq_i != 1)&& (full_o != 1))
-    begin   
-      result_queue_q.push_back      ( q_o );
-      temp_val = ref_queue_q_full.pop_back();
+  
+  
+ //#1  
+  if((rdreq_i == 1) && (empty_o == 0) && (wrreq_i == 0))
+    begin
+	  #1; 
+	  if( ref_queue_q_full.size() != 0 )
+      temp_val <= ref_queue_q_full.pop_back();
       ref_queue_q.push_back ( temp_val );
-      $display( "ref_queue_q.push_back  %d.  %d ns" , temp_val , $time) ; 
+	  result_queue_q.push_back ( q_o );
+      $display( "ref_queue_q.push_back/q_o  %d./%d  %d ns" , temp_val, q_o , $time) ; 
     end
   else   
-  if((wrreq_i == 1) && (full_o != 1) && (rdreq_i != 1)) 
+  if((wrreq_i == 1) && (full_o == 0) && (rdreq_i == 0)) 
     begin
       #1; 
       if((wrreq_i == 1) && (full_o != 1) && (rdreq_i != 1)) 
@@ -113,34 +117,81 @@ initial
     flag_b     = 0;
     rdreq_i_temp = 0;
     wrreq_i_temp = 0;
+	wrreq_i = 0;
+	rdreq_i = 0;
+	#700;
     fork
       begin                                  // send
-        for( int i = 0; i < ( 3*(2**AWIDTH_EXP_T)*3 ); i++ )
+        for( int i = 0; i < ( 3*(2**AWIDTH_EXP_T)*4 ); i++ )
           begin  
           
+            if( i >= 55 )    //  then empty write
+              begin
+                $display( "4 test i = %d ",i );
+                if( empty_o == 1 )
+                  begin   
+                    wrreq_i_temp = 1;             
+                    rdreq_i_temp = 0;
+                  end
+                else if( empty_o == 0 )
+                  begin   
+                    wrreq_i_temp = 0;             
+                    rdreq_i_temp = 1;
+                  end
+              end
+            else if( i >= 30 )     //  then full read
+              begin
+                $display( "3 test i = %d ",i );
+                wrreq_i_temp = 1;
+                if( usedw_o <= (2**AWIDTH_EXP_T - 1) && ( full_o == 0 ) )
+                  begin             
+                    rdreq_i_temp = 0;
+                  end
+                else if( full_o >= 1 )
+                  begin             
+                    rdreq_i_temp = 1;
+                  end 
+              end
+            else if( i >= 12 )     //  r/w not full not empty
+              begin
+                $display( "2 test i = %d ",i );
+                if(( usedw_o <= 3 ) && ( full_o == 0 ))
+                  begin             
+                    wrreq_i_temp = 1;
+                    rdreq_i_temp = 0;
+                  end
+                else if( ( usedw_o >= 5 ) || (( usedw_o == 0 ) && ( full_o == 1 )))
+                  begin             
+                    wrreq_i_temp = 0;
+                    rdreq_i_temp = 1;
+                  end 
+              end
+            else if( i >= 0 )
+              begin
+                 $display( "1 test i = %d ",i );
+				 if(count_send == 1)	
+                 wrreq_i_temp = 1;
+                if( full_o == 1 ) 
+                  begin  		  
+                    wrreq_i_temp = 0;
+                    rdreq_i_temp = 1;
+                  end 
+              end
+		  
           
-            if( empty_o == 1 )
-              wrreq_i_temp = 1;
-            else if( full_o == 1 ) 
-              wrreq_i_temp = 0;
-            if( full_o == 1 )  
-              rdreq_i_temp = 1;
-            else if( empty_o == 1 )  
-              rdreq_i_temp = 0;
-              /*
-              if(count_send == 1)
+            /*  if(count_send == 1)
                wrreq_i_temp = 1;
                if(count_send == 12)
                rdreq_i_temp = 1;
-               if(count_send == 19)
+               if(count_send == 12)
                wrreq_i_temp = 0;
-               if(count_send == 20)
+            /   if(count_send == 20)
                wrreq_i_temp = 1;
                if(count_send == 21)
                wrreq_i_temp = 0;
                if(count_send == 29)
-               rdreq_i_temp = 0;
-            */
+               rdreq_i_temp = 0;*/
+            
  
             data_i_t_temp  = $urandom%(2**DWIDTH_T-1);     
             send( rdreq_i_temp, wrreq_i_temp, data_i_t_temp ); 

@@ -113,10 +113,62 @@ initial
     wrreq_i_temp = 0;
     fork
       begin                                  // send
-        for( int i = 0; i < ( 3*(2**AWIDTH_EXP_T)*3 ); i++ )
+        for( int i = 0; i < ( 3*(2**AWIDTH_EXP_T)*4 ); i++ )
           begin  
           
-          
+            if( i >= 55 )    //  then empty write
+              begin
+                $display( "4 test i = %d ",i );
+                if( empty_o_a == 1 )
+                  begin   
+                    wrreq_i_temp = 1;             
+                    rdreq_i_temp = 0;
+                  end
+                else if( empty_o_a == 0 )
+                  begin   
+                    wrreq_i_temp = 0;             
+                    rdreq_i_temp = 1;
+                  end
+              end
+            else if( i >= 30 )     //  then full read
+              begin
+                $display( "3 test i = %d ",i );
+                wrreq_i_temp = 1;
+                if( usedw_o_a <= (2**AWIDTH_EXP_T - 1) && ( full_o_a == 0 ) )
+                  begin             
+                    rdreq_i_temp = 0;
+                  end
+                else if( full_o_a >= 1 )
+                  begin             
+                    rdreq_i_temp = 1;
+                  end 
+              end
+            else if( i >= 12 )     //  r/w not full not empty
+              begin
+                $display( "2 test i = %d ",i );
+                if(( usedw_o_a <= 3 ) && ( full_o_a == 0 ))
+                  begin             
+                    wrreq_i_temp = 1;
+                    rdreq_i_temp = 0;
+                  end
+                else if( ( usedw_o_a >= 5 ) || (( usedw_o_a == 0 ) && ( full_o_a == 1 )))
+                  begin             
+                    wrreq_i_temp = 0;
+                    rdreq_i_temp = 1;
+                  end 
+              end
+            else if( i >= 0 )
+              begin
+                 $display( "1 test i = %d ",i );
+                 wrreq_i_temp = 1;
+                if( full_o_a == 1 ) 
+                  begin             
+                    wrreq_i_temp = 0;
+                    rdreq_i_temp = 1;
+                  end 
+              end
+
+          /*
             if( empty_o_a == 1 )
               wrreq_i_temp = 1;
             else if( full_o_a == 1 ) 
@@ -125,7 +177,7 @@ initial
               rdreq_i_temp = 1;
             else if( empty_o_a == 1 )  
               rdreq_i_temp = 0;
-              /*
+              *//*
               if(count_send == 1)
                wrreq_i_temp = 1;
                if(count_send == 12)

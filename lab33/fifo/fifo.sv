@@ -28,7 +28,7 @@ logic [(DWIDTH-1):0]q_o_tv;
 logic [(AWIDTH_EXP-1):0]usedw_o_tv;
 
 logic [1:0]count_empt;
-
+/*
 initial
   begin
     q_o_tv     <= 0;
@@ -37,7 +37,7 @@ initial
     usedw_o_tv <= 0;
     count_empt <= 0;
   end
-
+*/
 //------------------
 
 always_ff @( posedge clk_i )
