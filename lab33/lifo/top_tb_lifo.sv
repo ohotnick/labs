@@ -29,6 +29,8 @@ logic [(DWIDTH_T-1):0] result_queue_q [$];
 logic [(DWIDTH_T-1):0] ref_queue_q [$];
 logic [(DWIDTH_T-1):0] ref_queue_q_full [$];
 
+logic flag_get;
+
 
 logic flag_b;
 
@@ -63,24 +65,29 @@ task get (  );
   logic [(DWIDTH_T-1):0] temp_val;
   
   
- //#1  
+  #1;  
   if((rdreq_i == 1) && (empty_o == 0) && (wrreq_i == 0))
-    begin
+    begin  
 	  #1; 
-	  if( ref_queue_q_full.size() != 0 )
-      temp_val <= ref_queue_q_full.pop_back();
-      ref_queue_q.push_back ( temp_val );
-	  result_queue_q.push_back ( q_o );
-      $display( "ref_queue_q.push_back/q_o  %d./%d  %d ns" , temp_val, q_o , $time) ; 
+	  flag_get <= 1;
+	  if(( ref_queue_q_full.size() != 0 ) &&  (flag_get == 1))
+	    begin
+          temp_val = ref_queue_q_full.pop_back();
+          ref_queue_q.push_back ( temp_val );
+	      result_queue_q.push_back ( q_o );
+		  $display( "ref_queue_q.push_back/q_o  %d./%d  %d ps" , temp_val, q_o , $time) ;
+		end
+     // $display( "ref_queue_q.push_back/q_o  %d./%d  %d ps" , temp_val, q_o , $time) ; 
     end
   else   
   if((wrreq_i == 1) && (full_o == 0) && (rdreq_i == 0)) 
     begin
+	  flag_get = 0;
       #1; 
       if((wrreq_i == 1) && (full_o != 1) && (rdreq_i != 1)) 
         begin
           ref_queue_q_full.push_back       ( data_i_t );
-          $display( "ref_queue_q_full.push_back  %d.  %d ns" , data_i_t, $time) ;
+          $display( "ref_queue_q_full.push_back  %d.  %d ps" , data_i_t, $time) ;
         end
     end
     
@@ -117,8 +124,9 @@ initial
     flag_b     = 0;
     rdreq_i_temp = 0;
     wrreq_i_temp = 0;
-	wrreq_i = 0;
-	rdreq_i = 0;
+	wrreq_i  = 0;
+	rdreq_i  = 0;
+	flag_get = 0;
 	#700;
     fork
       begin                                  // send

@@ -18,8 +18,8 @@ output [(AWIDTH_EXP-1):0]usedw_o
 );
 
 logic [(DWIDTH-1):0] ram[(AWIDTH-1):0];       //mem
-logic [(AWIDTH_EXP-1):0]index_ram_start;
-logic [(AWIDTH_EXP-1):0]index_ram_end;
+logic [(AWIDTH_EXP-1):0]index_ram_wr;
+logic [(AWIDTH_EXP-1):0]index_ram_rd;
 logic full_flag;
 logic empty_flag;
 logic [(DWIDTH-1):0]q_o_tv;
@@ -48,8 +48,8 @@ always_ff @( posedge clk_i )
       begin
          if(( empty_flag == 0 ) && ( rdreq_i == 1 ) && ( wrreq_i == 0 ))
          begin
-          q_o_tv <= ram[index_ram_start];
-          // $display( "index %d q_o=%d" , index_ram_start, q_o_tv );
+            q_o_tv <= ram[index_ram_rd];
+           //$display( "index %d q_o=%d" , index_ram_wr, q_o_tv );
           end
       end 
   end
@@ -58,22 +58,46 @@ always_ff @( posedge clk_i )
   begin 
     if(srst_i)
       begin
-        index_ram_start <= 0;
+        index_ram_wr <= 0;
+		index_ram_rd <= 0;
       end
     else
       begin
-        if(( full_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i != 1 ))       //write
+        if(( full_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i == 0 ))       //write
           begin   
             
-            ram[index_ram_start] <= data_i;
-            //$display( "index %d data_i=%d" , index_ram_start, data_i );
-            if(index_ram_start != (AWIDTH-1))
-              index_ram_start = index_ram_start + 1;
-              
+            ram[index_ram_wr] <= data_i;
+            //$display( "index %d data_i=%d" , index_ram_wr, data_i );
+            if(index_ram_wr != (AWIDTH-1))
+			  begin
+                index_ram_wr <= index_ram_wr + 1;
+				if(index_ram_wr != 0)
+				  index_ram_rd <= index_ram_rd + 1;
+			  end
+			else  
+              begin
+			    index_ram_wr <= index_ram_wr;
+				index_ram_rd <= index_ram_rd;
+			  end
+			if(index_ram_wr == (AWIDTH-1))
+              index_ram_rd <= index_ram_rd + 1;  
+			  
           end
         else if( ( empty_flag == 0 ) && ( rdreq_i == 1 )&& ( wrreq_i != 1 ))
-           if(index_ram_start != 0) 
-            index_ram_start = index_ram_start - 1;     
+           if(index_ram_rd != 0)
+		     begin
+			   if(index_ram_rd != (AWIDTH-1))
+                 index_ram_wr <= index_ram_wr - 1;
+			   index_ram_rd <= index_ram_rd - 1; 
+			 end
+		   else
+		     begin
+			   if(index_ram_rd == 0)
+			     index_ram_wr <= index_ram_wr - 1; 
+			   
+			   index_ram_wr <= index_ram_wr;
+			   index_ram_rd <= index_ram_rd; 
+             end			   
       end 
   end
 
@@ -86,7 +110,7 @@ always_ff @( posedge clk_i )
     else
       begin
           
-         if(( full_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i != 1 )&&( usedw_o_tv <(AWIDTH-1)))       //write
+         if(( full_flag == 0 ) && ( wrreq_i == 1 )&& ( rdreq_i != 1 ))       //write &&( usedw_o_tv <(AWIDTH-1))
           usedw_o_tv <= usedw_o_tv + 1;
           else if(( empty_flag == 0 ) && ( rdreq_i == 1 )&& ( wrreq_i != 1 ))
           usedw_o_tv <= usedw_o_tv - 1;
