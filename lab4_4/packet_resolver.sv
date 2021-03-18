@@ -31,9 +31,25 @@ logic wrreq_i_ff;
 logic rdreq_i_ff;
 logic empty_o_ff;
 logic full_o_ff;
-logic usedw_o_ff;
+logic [10:0]usedw_o_ff;
 logic srst_i_ff;
-logic ast_data_i_ff;
+logic [63:0]ast_data_i_ff;
+
+
+logic ast_ready_o_tv;
+logic ast_valid_o_tv;
+logic [63:0]ast_data_o_tv;
+logic ast_startofpacket_o_tv;
+logic ast_endofpacket_o_tv;
+logic [1:0]ast_empty_o_tv;
+logic flag_read;
+logic flag_channel;
+logic flag_SOP;
+
+
+
+
+
 
 always_ff @( posedge clk_i )
   begin
@@ -50,15 +66,7 @@ always_ff @( posedge clk_i )
 	  end
   end
   
-logic ast_ready_o_tv;
-logic ast_valid_o_tv;
-logic [63:0]ast_data_o_tv;
-logic ast_startofpacket_o_tv;
-logic ast_endofpacket_o_tv;
-logic [1:0]ast_empty_o_tv;
-logic flag_read;
-logic flag_channel;
-logic flag_SOP;
+
   
 fifo     #(
             .DWIDTH     (DWIDTH_T),
@@ -104,9 +112,15 @@ always_ff @( posedge clk_i )
 		flag_channel   <= 0;
 		ast_valid_o_tv <= 0;
 		flag_SOP       <= 0;
+		
+		ast_ready_o_tv <= 0;
+		ast_empty_o_tv <= 0;
+		ast_endofpacket_o_tv <= 0;
+		ast_startofpacket_o_tv <= 0;
       end
     else
 	  begin
+	    //$display( "1)ast_startofpacket_o_tv %d, time %d ns ",ast_startofpacket_o_tv , $time);
 	    if( flag_read == 0 )
 		  begin
 		    if( ast_valid_i == 1 )
@@ -168,6 +182,10 @@ always_ff @( posedge clk_i )
 				ast_valid_o_tv <= 0;
 				rdreq_i_ff     <= 0;
 				wrreq_i_ff     <= 0;
+				
+				ast_endofpacket_o_tv   <= 0;
+				flag_channel           <= 0;
+				
 				if(srst_i_ff == 1)
                   flag_read <= 0;
 			  end
@@ -176,9 +194,9 @@ always_ff @( posedge clk_i )
 	  end
   end
 
-assign csr_readdata_o      = csr_readdata_o_tv;
-assign csr_readdatavalid_o = csr_readdatavalid_o_tv;
-assign csr_waitrequest_o   = csr_waitrequest_o_tv;
+//assign csr_readdata_o      = csr_readdata_o_tv;
+//assign csr_readdatavalid_o = csr_readdatavalid_o_tv;
+//assign csr_waitrequest_o   = csr_waitrequest_o_tv;
 assign ast_ready_o         = ast_ready_o_tv;
 assign ast_valid_o         = ast_valid_o_tv;
 assign ast_data_o          = ast_data_o_tv;
