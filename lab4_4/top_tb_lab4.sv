@@ -150,6 +150,7 @@ class AVClassPackGen;
 	logic [31:0]  wrd_N3;
 	logic flag_b;
 	
+	
 	integer flag_word;
 	integer i_size_pack = 0;
 	integer i_send_pack = 0;
@@ -180,15 +181,16 @@ class AVClassPackGen;
 	//i_size_pack = $random_range(size_max,size_min); //$random_range(1514,60)
 	i_size_pack = $urandom%size_max;
 	i_send_pack = 0;
-	//flag_word   = $urandom%10;
+	//flag_word   = $urandom%10+5;
 	flag_word   = flag_set_word;
 	//$display( "flag_word = %d, i_size_pack = %d, time %d ns ", flag_word, i_size_pack, $time  );
 	//$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
-	$display( "flag_word = %b, time %d ns ", flag_word, $time  );
+	$display( "flag_word = %d, time %d ns ", flag_word, $time  );
 	/*
 	if( (i_size_pack > 192)&&(flag_word > 4) )
 	  flag_set_word     = 1;
 	  */
+	  
 	  
 	  
 	av_st_if_v.data          = 0;
@@ -199,13 +201,19 @@ class AVClassPackGen;
 	flag_b                   = 0;
 	//av_st_if_v.clk
     //av_st_if_v. ready
-	
+	/*
+	@(posedge av_st_if_v.clk);
+	@(posedge av_st_if_v.clk);
+	@(posedge av_st_if_v.clk);
+	@(posedge av_st_if_v.clk);
+	*/
 	
 	  forever
         begin
           @(posedge av_st_if_v.clk)
             begin
-			  //$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
+			  //$display( "i_send_pack = %d, i_size_pack = %d, time %d ns ", i_send_pack,i_size_pack, $time  );
+			  //#195;
 			  if( av_st_if_v.ready == 0 )
 			    av_st_if_v.startofpacket <= 0;
 			  
@@ -220,26 +228,29 @@ class AVClassPackGen;
 			  
 		        if( i_send_pack == 0 )
 				  begin
-				    $display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
+				    
 			        if((i_size_pack > 192)&&(flag_word > 4))
 				      begin
+					    
 			            av_st_if_v.data          <= pack_to_send[191:128];
 				     	av_st_if_v.valid         <= 1;
 					    av_st_if_v.startofpacket <= 1;
 						i_send_pack              = i_send_pack + 64;
+						//$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
 				  	  end
 				    else
 				      begin
-					    av_st_if_v.data          <= 1;
+					    av_st_if_v.data          <= $urandom;
 					    av_st_if_v.valid         <= 1;
 					    av_st_if_v.startofpacket <= 1;
+						//$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
 						if( i_size_pack > (i_send_pack + 64))
 						  i_send_pack = i_send_pack + 64;
 						else
 						  begin
-						    i_send_pack            = i_send_pack + i_size_pack;
+						    //i_send_pack            = i_send_pack + i_size_pack;
 							av_st_if_v.endofpacket <= 1;
-                            av_st_if_v.empty       <= i_send_pack + 64 - i_size_pack;
+                            av_st_if_v.empty       <= i_size_pack - i_send_pack;
 							flag_b                 = 1;
 						  end
 					  end
@@ -255,16 +266,16 @@ class AVClassPackGen;
 				  	  end
 				    else
 				      begin
-					    av_st_if_v.data          <= 1;
+					    av_st_if_v.data          <= $urandom;
 					    av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 1;
+					    av_st_if_v.startofpacket <= 0;
 						if( i_size_pack > (i_send_pack + 64))
 						  i_send_pack = i_send_pack + 64;
 						else
 						  begin
-						    i_send_pack            = i_send_pack + i_size_pack;
+						    //i_send_pack            = i_send_pack + i_size_pack;
 							av_st_if_v.endofpacket <= 1;
-                            av_st_if_v.empty       <= i_send_pack + 64 - i_size_pack;
+                            av_st_if_v.empty       <= i_size_pack - i_send_pack;
 							flag_b                 = 1;
 						  end
 					  end
@@ -280,41 +291,42 @@ class AVClassPackGen;
 				  	  end
 				    else
 				      begin
-					    av_st_if_v.data          <= 1;
+					    av_st_if_v.data          <= $urandom;
 					    av_st_if_v.valid         <= 1;
 					    av_st_if_v.startofpacket <= 0;
 						if( i_size_pack > (i_send_pack + 64))
 						  i_send_pack = i_send_pack + 64;
 						else
 						  begin
-						    i_send_pack            = i_send_pack + i_size_pack;
+						    //i_send_pack            = i_send_pack + i_size_pack;
 							av_st_if_v.endofpacket <= 1;
-                            av_st_if_v.empty       <= i_send_pack + 64 - i_size_pack;
+                            av_st_if_v.empty       <= i_size_pack - i_send_pack;
 							flag_b                 = 1;
 						  end
 					  end
 				  end
 				else if( i_send_pack > size_max ) 
                   begin
-					i_send_pack            = i_send_pack + i_size_pack;
+					//i_send_pack            = i_send_pack + i_size_pack;
 					av_st_if_v.endofpacket <= 1;
                     av_st_if_v.empty       <= 6;
 					flag_b                 = 1;
+					//$display( "+++++++i_size_pack - i_send_pack =  %d, av_st_if_v.empty %d, time %d ns ",(i_size_pack - i_send_pack), av_st_if_v.empty , $time  );
 				  end	
                 else if( i_send_pack >= 192 ) 
                   begin
-				    av_st_if_v.data          <= 1;
+				    av_st_if_v.data          <= $urandom;
 					av_st_if_v.valid         <= 1;
 				    av_st_if_v.startofpacket <= 0;
 					if( i_size_pack > (i_send_pack + 64))
 					  i_send_pack = i_send_pack + 64;
 					else
 					  begin
-					    i_send_pack            = i_send_pack + i_size_pack;
+					   // i_send_pack            = i_send_pack + i_size_pack;
 						av_st_if_v.endofpacket <= 1;
-                        av_st_if_v.empty       <= i_send_pack + 64 - i_size_pack;
+                        av_st_if_v.empty       <=   i_size_pack - i_send_pack;
 						flag_b                 = 1;
-						//$display( ">192 flag_b %d, time %d ns ",flag_b , $time  );
+						//$display( "!!!!!!!!!i_size_pack - i_send_pack =  %d, av_st_if_v.empty %d, time %d ns ",(i_size_pack - i_send_pack), av_st_if_v.empty , $time  );
 					  end
 				  end				  
 					
@@ -477,8 +489,9 @@ initial
 	
     av_infs_out.ready = 1;
 	dut_class.send_pack( size_max, size_min, 7 );
-    dut_class.send_pack( size_max, size_min, 7 );
-    
+    dut_class.send_pack( size_max, size_min, 5 );
+	dut_class.send_pack( size_max, size_min, 1 );
+	dut_class.send_pack( size_max, size_min, 5 );
 /*
   flag_b     = 0;
      fork

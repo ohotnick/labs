@@ -335,7 +335,7 @@ always_ff @( posedge clk_i )
       end
     else
 	  begin
-	    if( ast_ready_i == 0 )
+	    if(( ast_ready_i == 0 )||( ast_endofpacket_o_tv == 1))
 		  ast_ready_o_tv <= 0;
 		else
 		  ast_ready_o_tv <= 1;
@@ -351,6 +351,8 @@ always_ff @( posedge clk_i )
       end
     else
 	  begin
+	  //$display( "packet_classer: 1)ast_startofpacket_o %d, 2)ast_endofpacket_o %d 3)ast_ready_i %d, time %d ns ",ast_startofpacket_o,ast_endofpacket_o, ast_ready_i , $time);
+	  
 	    if( ast_ready_i == 1 )
 		  begin
 		    if( ast_valid_i == 1 )
@@ -388,7 +390,8 @@ assign csr_readdata_o      = csr_readdata_o_tv;
 assign csr_readdatavalid_o = csr_readdatavalid_o_tv;
 assign csr_waitrequest_o   = csr_waitrequest_o_tv;
 assign ast_channel_o       = ast_channel_o_tv;
-assign ast_ready_o         = ast_ready_i;
+//assign ast_ready_o         = ast_ready_i;
+assign ast_ready_o         = ((ast_endofpacket_o_tv == 1)||(ast_endofpacket_i == 1)) ? 1'b0: ast_ready_i;
 assign ast_valid_o         = ast_valid_o_tv;
 assign ast_data_o          = ast_data_o_tv;
 assign ast_empty_o         = ast_empty_o_tv;
