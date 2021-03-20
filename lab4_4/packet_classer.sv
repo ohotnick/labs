@@ -392,6 +392,7 @@ assign csr_waitrequest_o   = csr_waitrequest_o_tv;
 assign ast_channel_o       = ast_channel_o_tv;
 //assign ast_ready_o         = ast_ready_i;
 assign ast_ready_o         = ((ast_endofpacket_o_tv == 1)||(ast_endofpacket_i == 1)) ? 1'b0: ast_ready_i;
+//assign ast_ready_o         = ((ast_endofpacket_o_tv == 1)) ? 1'b0: ast_ready_i;
 assign ast_valid_o         = ast_valid_o_tv;
 assign ast_data_o          = ast_data_o_tv;
 assign ast_empty_o         = ast_empty_o_tv;

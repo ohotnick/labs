@@ -143,7 +143,9 @@ class AVClassPackGen;
     av_st_if_v = av_st_if_v_new;
   endfunction
   
-  task send_pack( integer size_max, integer size_min, integer flag_set_word );
+  
+  
+  task send_pack( integer size_max, integer size_min, integer flag_set_word );  // (>5) - word, (<2) - wrog word, (2-5) no word
 	logic [191:0] pack_to_send;
 	logic [31:0]  wrd_N1;
 	logic [31:0]  wrd_N2;
@@ -152,9 +154,11 @@ class AVClassPackGen;
 	
 	
 	integer flag_word;
-	integer i_size_pack = 0;
-	integer i_send_pack = 0;
-	integer slide_word  = 0;
+	integer i_size_pack    = 0;
+	integer i_send_pack    = 0;
+	integer slide_word     = 0;
+	integer x_send_pack    = 0;
+	integer flag_word_send = 0;
 	
 	//wrd_N1 = 32'b01101000011001010110110001101100;  //hell h - 01101000
 	wrd_N1 = 32'b01101100011011000110010101101000;
@@ -180,18 +184,21 @@ class AVClassPackGen;
 	
 	//i_size_pack = $random_range(size_max,size_min); //$random_range(1514,60)
 	i_size_pack = $urandom%size_max;
+	if(i_size_pack <= size_min)
+	  i_size_pack = size_min;
 	i_send_pack = 0;
 	//flag_word   = $urandom%10+5;
 	flag_word   = flag_set_word;
 	//$display( "flag_word = %d, i_size_pack = %d, time %d ns ", flag_word, i_size_pack, $time  );
 	//$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
 	$display( "flag_word = %d, time %d ns ", flag_word, $time  );
-	/*
-	if( (i_size_pack > 192)&&(flag_word > 4) )
-	  flag_set_word     = 1;
-	  */
-	  
-	  
+    x_send_pack = $urandom%( i_size_pack - ( 12 + 16 ));
+	if(flag_word > 5)
+      flag_word_send = 0;
+	else if(flag_word < 2)
+	  flag_word_send = 8;
+	else
+	  flag_word_send = 20;
 	  
 	av_st_if_v.data          = 0;
     av_st_if_v.valid         = 0;
@@ -201,12 +208,6 @@ class AVClassPackGen;
 	flag_b                   = 0;
 	//av_st_if_v.clk
     //av_st_if_v. ready
-	/*
-	@(posedge av_st_if_v.clk);
-	@(posedge av_st_if_v.clk);
-	@(posedge av_st_if_v.clk);
-	@(posedge av_st_if_v.clk);
-	*/
 	
 	  forever
         begin
@@ -225,111 +226,51 @@ class AVClassPackGen;
 		          break;
 			    end
 			  else if( av_st_if_v.ready == 1 )
-			  
-		        if( i_send_pack == 0 )
+			    begin
+				//$display( "1)i_send_pack = %d, 2)flag_word_send = %d, 3)x_send_pack %d, 4)i_size_pack %d,  time %d ns ", i_send_pack, flag_word_send, x_send_pack, i_size_pack, $time  );
+		        if( i_size_pack > (i_send_pack + 8) )
 				  begin
-				    
-			        if((i_size_pack > 192)&&(flag_word > 4))
-				      begin
-					    
-			            av_st_if_v.data          <= pack_to_send[191:128];
-				     	av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 1;
-						i_send_pack              = i_send_pack + 64;
-						//$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
-				  	  end
-				    else
-				      begin
-					    av_st_if_v.data          <= $urandom;
-					    av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 1;
-						//$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
-						if( i_size_pack > (i_send_pack + 64))
-						  i_send_pack = i_send_pack + 64;
-						else
-						  begin
-						    //i_send_pack            = i_send_pack + i_size_pack;
-							av_st_if_v.endofpacket <= 1;
-                            av_st_if_v.empty       <= i_size_pack - i_send_pack;
-							flag_b                 = 1;
-						  end
-					  end
-				  end
-				else if( i_send_pack == 64 ) 
-                  begin
-			        if((i_size_pack > 192)&&(flag_word > 4))
-				      begin
-			            av_st_if_v.data          <= pack_to_send[127:64];
-				     	av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 0;
-						i_send_pack              = i_send_pack + 64;
-				  	  end
-				    else
-				      begin
-					    av_st_if_v.data          <= $urandom;
-					    av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 0;
-						if( i_size_pack > (i_send_pack + 64))
-						  i_send_pack = i_send_pack + 64;
-						else
-						  begin
-						    //i_send_pack            = i_send_pack + i_size_pack;
-							av_st_if_v.endofpacket <= 1;
-                            av_st_if_v.empty       <= i_size_pack - i_send_pack;
-							flag_b                 = 1;
-						  end
-					  end
-				  end
-                else if( i_send_pack == 128 ) 
-                  begin
-			        if((i_size_pack > 192)&&(flag_word > 4))
-				      begin
-			            av_st_if_v.data          <= pack_to_send[63:0];
-				     	av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 0;
-						i_send_pack              = i_send_pack + 64;
-				  	  end
-				    else
-				      begin
-					    av_st_if_v.data          <= $urandom;
-					    av_st_if_v.valid         <= 1;
-					    av_st_if_v.startofpacket <= 0;
-						if( i_size_pack > (i_send_pack + 64))
-						  i_send_pack = i_send_pack + 64;
-						else
-						  begin
-						    //i_send_pack            = i_send_pack + i_size_pack;
-							av_st_if_v.endofpacket <= 1;
-                            av_st_if_v.empty       <= i_size_pack - i_send_pack;
-							flag_b                 = 1;
-						  end
-					  end
-				  end
-				else if( i_send_pack > size_max ) 
-                  begin
-					//i_send_pack            = i_send_pack + i_size_pack;
-					av_st_if_v.endofpacket <= 1;
-                    av_st_if_v.empty       <= 6;
-					flag_b                 = 1;
-					//$display( "+++++++i_size_pack - i_send_pack =  %d, av_st_if_v.empty %d, time %d ns ",(i_size_pack - i_send_pack), av_st_if_v.empty , $time  );
-				  end	
-                else if( i_send_pack >= 192 ) 
-                  begin
-				    av_st_if_v.data          <= $urandom;
-					av_st_if_v.valid         <= 1;
-				    av_st_if_v.startofpacket <= 0;
-					if( i_size_pack > (i_send_pack + 64))
-					  i_send_pack = i_send_pack + 64;
-					else
+				    if((i_send_pack >= x_send_pack) && (flag_word_send <= 2))
 					  begin
-					   // i_send_pack            = i_send_pack + i_size_pack;
-						av_st_if_v.endofpacket <= 1;
-                        av_st_if_v.empty       <=   i_size_pack - i_send_pack;
-						flag_b                 = 1;
-						//$display( "!!!!!!!!!i_size_pack - i_send_pack =  %d, av_st_if_v.empty %d, time %d ns ",(i_size_pack - i_send_pack), av_st_if_v.empty , $time  );
+					    if( flag_word_send == 0 )
+						  av_st_if_v.data <= pack_to_send[191:128];
+						if( flag_word_send == 1 )
+						  av_st_if_v.data <= pack_to_send[127:64];
+						if( flag_word_send == 2 )
+						  av_st_if_v.data <= pack_to_send[63:0];
+						flag_word_send = flag_word_send + 1;
 					  end
-				  end				  
-					
+					else if((i_send_pack >= x_send_pack) &&(flag_word_send <= 10))
+					  begin
+					    if( flag_word_send == 8 )
+						  av_st_if_v.data <= pack_to_send[191:128] + $urandom%300;
+					    if( flag_word_send == 9 )
+						  av_st_if_v.data <= pack_to_send[127:64]  + $urandom%300;
+						if( flag_word_send == 10 )
+						  av_st_if_v.data <= pack_to_send[63:0]    + $urandom%300;
+						flag_word_send = flag_word_send + 1;
+					  end
+					else
+			          av_st_if_v.data          <= $urandom;
+						
+				    av_st_if_v.valid           <= 1;
+					if(i_send_pack == 0)
+					  av_st_if_v.startofpacket <= 1;
+					else
+					  av_st_if_v.startofpacket <= 0;
+					//$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
+					i_send_pack = i_send_pack + 8;
+				  end
+				else
+				  begin
+				    //i_send_pack            = i_send_pack + i_size_pack;
+					av_st_if_v.data          <= $urandom;
+					av_st_if_v.endofpacket   <= 1;
+					av_st_if_v.startofpacket <= 0;
+                    av_st_if_v.empty         <= i_size_pack - i_send_pack;
+					flag_b                   = 1;
+				  end			  
+				end
 			  else if( av_st_if_v.ready == 0 )
 			     begin
 			       av_st_if_v.valid <= 1;
@@ -338,18 +279,12 @@ class AVClassPackGen;
 			     end
 			   // $display( "flag_b %d, time %d ns ",flag_b , $time  );     
 		    end
-			/*
-          if ( flag_b == 1 )
-		    begin
-			  if( av_st_if_v.endofpacket == 1 )
-			    av_st_if_v.endofpacket <= 0;
-		      $display( "break, time %d ns ", $time  );
-		      break;
-			end 
-			*/
+
         end
 	
   endtask	
+  
+
 		
 endclass
 
@@ -378,8 +313,8 @@ module top_tb_lab4;
   logic csr_readdatavalid_o;
   logic csr_waitrequest_o;
   
-  	integer size_max = 1500;
-	integer size_min = 100;
+  	integer size_max = 150;
+	integer size_min = 60;
 	integer   flag_set_word;
 		
 /*
@@ -474,7 +409,7 @@ initial
     csr_write_i     = 0;
     csr_writedata_i = 0;
     csr_read_i      = 0;
-	flag_set_word   = 0;
+	flag_set_word   = 0;   // (>5) - word, (<2) - wrog word, (2-5) no word
 
 	
 	//size_max = 1500;
@@ -482,8 +417,8 @@ initial
 	
 	
 	//$monitor( "av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
-    //$monitor( "av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
-    $monitor( "av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
+    $monitor( "av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
+    //$monitor( "av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
     
 	//$monitor( "av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns /n av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time ,av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
 	
