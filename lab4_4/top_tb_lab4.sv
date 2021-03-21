@@ -317,7 +317,7 @@ module top_tb_lab4;
   logic csr_readdatavalid_o;
   logic csr_waitrequest_o;
   
-    integer size_max = 150;
+    integer size_max = 1500;
     integer size_min = 60;
     integer   flag_brk = 0;
         
