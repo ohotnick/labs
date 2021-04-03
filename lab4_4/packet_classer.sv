@@ -34,20 +34,31 @@ output ast_channel_o
 );
 
 //Avalon-MM
-logic [31:0] ram[8:0];       //reg
+logic [31:0] bank_reg[8:0];       //bank_reg
 logic [31:0]csr_readdata_o_tv;
 logic csr_readdatavalid_o_tv;
 logic csr_waitrequest_o_tv;
+logic work_on;
+
 
 initial 
   begin
-  //ram[3] = 32'b01101000011001010110110001101100;  //hell h - 01101000
-  ram[3] = 32'b01101100011011000110010101101000;  //big endian
-  //ram[2] = 32'b01101111001011000111011101101111;  //o,wo
-  ram[2] = 32'b01101111011101110010110001101111;
-  //ram[1] = 32'b01110010011011000110010000100001;  //rld!
-  ram[1] = 32'b00100001011001000110110001110010;  
-  ram[0] = 32'b00000000000000000000000000000001;  //1-ON 2-OFF
+  
+  logic [11:0][7:0] mem_data = "hello,world!";
+  
+  //bank_reg[3] = 32'b01101000011001010110110001101100;  //hell h - 01101000
+ // bank_reg[3] = 32'b01101100011011000110010101101000;  //big endian
+  //bank_reg[3] = "lleh";
+  bank_reg[3] = mem_data[95:0] >> 64;  
+  //bank_reg[2] = 32'b01101111001011000111011101101111;  //o,wo
+  //bank_reg[2] = 32'b01101111011101110010110001101111;
+  //bank_reg[2] = "ow,o";
+  bank_reg[2] = mem_data[63:0] >> 32;
+  //bank_reg[1] = 32'b01110010011011000110010000100001;  //rld!
+  //bank_reg[1] = 32'b00100001011001000110110001110010; 
+  //bank_reg[1] = "!dlr";
+  bank_reg[1] = mem_data[31:0];
+  bank_reg[0] = 32'b00000000000000000000000000000001;  //1-ON 2-OFF
   end
 
 //Avalon-MM page 21 read
@@ -61,6 +72,7 @@ always_ff @( posedge clk_i )
       end
     else
       begin
+	  
         if( csr_readdatavalid_o_tv == 1 )
           begin
             csr_readdatavalid_o_tv <= 0;
@@ -68,39 +80,29 @@ always_ff @( posedge clk_i )
         else if( ( csr_read_i == 1 ) && ( csr_waitrequest_o_tv == 0 ) )
           begin
             csr_waitrequest_o_tv   <= 1;
-            csr_readdata_o_tv      <= ram [csr_address_i];
+            csr_readdata_o_tv      <= bank_reg [csr_address_i];
             csr_readdatavalid_o_tv <= 0;
           end
-        else if( ( csr_waitrequest_o_tv == 1 ) && ( csr_read_i == 1 ) )
+        else if( ( csr_waitrequest_o_tv == 1 ) )
           begin
             csr_waitrequest_o_tv   <= 0;
             csr_readdatavalid_o_tv <= 1;
           end
-      end
-  end   
-
-//Avalon-MM page 21 write
-always_ff @( posedge clk_i )
-  begin
-    if(srst_i)
-      begin
-        
-      end
-    else
-      begin
-        if( ( csr_write_i == 1 ) && ( csr_waitrequest_o_tv == 0 ) )
+		  
+		//Avalon-MM page 21 write  
+		  if( ( csr_write_i == 1 ) && ( csr_waitrequest_o_tv == 0 ) )
           begin
             csr_waitrequest_o_tv <= 1;
           end
-        else if( ( csr_write_i == 1 ) && ( csr_waitrequest_o_tv == 1 ) )
+        else if( ( csr_waitrequest_o_tv == 1 ) )
           begin
             csr_waitrequest_o_tv <= 0;
-            ram [csr_address_i]  <= csr_writedata_i;
+            bank_reg [csr_address_i]  <= csr_writedata_i;
           end
-        else if( ( csr_write_i == 0 ) && ( csr_waitrequest_o_tv == 1 ) && ( csr_read_i == 0 ) )
-          csr_waitrequest_o_tv <= 0;
+		  
       end
-  end
+  end   
+
   
 //Avalon-ST
 logic flag_1;
@@ -143,17 +145,20 @@ always_ff @( posedge clk_i )
         flag_8_1         <= 0;
         flag_8_2         <= 0;
         ast_channel_o_tv <= 0;
+		work_on          <= bank_reg[0][0];
       end
     else
       begin
         
-        if(( ast_endofpacket_o_tv == 1 )&& ( ast_ready_i == 1 ) && ( ram[0][0] == 1 ))
+		work_on <= bank_reg[0][0];
+		
+        if(( ast_endofpacket_o_tv == 1 )&& ( ast_ready_i == 1 ) && ( work_on == 1 ))
                begin
                 ast_channel_o_tv <= 0;
                 //$display( "7)ast_channel_o_tv %d (if( ast_endofpacket_o_tv == 1 )), time %d ns ",ast_channel_o_tv , $time);
                end
         
-        if (( ast_valid_i == 1 ) && ( ast_ready_i == 1 ) && ( ram[0][0] == 1 ))
+        if (( ast_valid_i == 1 ) && ( ast_ready_i == 1 ) && ( work_on == 1 ))
           begin
           //mask 1
           /*
@@ -175,16 +180,16 @@ always_ff @( posedge clk_i )
           
           //$display( "1)ast_endofpacket_o_tv       %b, time %d ns ",ast_endofpacket_o_tv , $time);
           //$display( "2)ast_data_i       %b, time %d ns ",ast_data_i , $time);
-          //$display( "1)ram[3][31:24]    %b, time %d ns ",ram[3][31:24] , $time);
+          //$display( "1)bank_reg[3][31:24]    %b, time %d ns ",bank_reg[3][31:24] , $time);
           
-          //$display( "1)ram[3]                                     %b, time %d ns ",ram[3] , $time);
+          //$display( "1)bank_reg[3]                                     %b, time %d ns ",bank_reg[3] , $time);
           
           
-            if( ( ram[3] == ast_data_i[31:0] ) && ( ast_endofpacket_i != 1 ) )
+            if( ( bank_reg[3] == ast_data_i[31:0] ) && ( ast_endofpacket_i != 1 ) )
               flag_1 <= 1;
             else
               flag_1 <= 0;
-            if (( flag_1 == 1 ) && ( {ram[2],ram[1]} == ast_data_i ))
+            if (( flag_1 == 1 ) && ( {bank_reg[2],bank_reg[1]} == ast_data_i ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 4 ))
                   ast_channel_o_tv <= 1;
@@ -214,11 +219,11 @@ always_ff @( posedge clk_i )
                end
                */
           //mask 2
-            if( ( {ram[3],ram[2][31:24]} == ast_data_i[39:0]) && ( ast_endofpacket_i != 1 ) )
+            if( ( {bank_reg[3],bank_reg[2][31:24]} == ast_data_i[39:0]) && ( ast_endofpacket_i != 1 ) )
               flag_2 <= 1;
             else
               flag_2 <= 0;
-            if (( flag_2 == 1 ) && ( {ram[2][23:0],ram[1]} == ast_data_i[63:8] ))
+            if (( flag_2 == 1 ) && ( {bank_reg[2][23:0],bank_reg[1]} == ast_data_i[63:8] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 3 ))
                   ast_channel_o_tv <= 1;
@@ -226,11 +231,11 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           //mask 3
-            if( ( {ram[3],ram[2][31:16]} == ast_data_i[47:0]) && ( ast_endofpacket_i != 1 ) )
+            if( ( {bank_reg[3],bank_reg[2][31:16]} == ast_data_i[47:0]) && ( ast_endofpacket_i != 1 ) )
               flag_3 <= 1;
             else
               flag_3 <= 0;
-            if (( flag_3 == 1 ) && ( {ram[2][15:0],ram[1]} == ast_data_i[63:16] ))
+            if (( flag_3 == 1 ) && ( {bank_reg[2][15:0],bank_reg[1]} == ast_data_i[63:16] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 2 ))
                   ast_channel_o_tv <= 1;
@@ -238,11 +243,11 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           //mask 4
-            if( ( {ram[3],ram[2][31:8]} == ast_data_i[55:0]) && ( ast_endofpacket_i != 1 ) )
+            if( ( {bank_reg[3],bank_reg[2][31:8]} == ast_data_i[55:0]) && ( ast_endofpacket_i != 1 ) )
               flag_4 <= 1;
             else
               flag_4 <= 0;
-            if (( flag_4 == 1 ) && ( {ram[2][7:0],ram[1]} == ast_data_i[63:24] ))
+            if (( flag_4 == 1 ) && ( {bank_reg[2][7:0],bank_reg[1]} == ast_data_i[63:24] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 1 ))
                   ast_channel_o_tv <= 1;
@@ -250,11 +255,11 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           //mask 5
-            if( ( {ram[3],ram[2]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
+            if( ( {bank_reg[3],bank_reg[2]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
               flag_5 <= 1;
             else
               flag_5 <= 0;
-            if (( flag_5 == 1 ) && ( ram[1] == ast_data_i[63:32] ))
+            if (( flag_5 == 1 ) && ( bank_reg[1] == ast_data_i[63:32] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i == 0 ))
                   ast_channel_o_tv <= 1;
@@ -262,17 +267,17 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           //mask 6
-            if( ( flag_6_1 == 1 ) &&( {ram[3][23:0],ram[2],ram[1][31:24]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
+            if( ( flag_6_1 == 1 ) &&( {bank_reg[3][23:0],bank_reg[2],bank_reg[1][31:24]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
               flag_6_2 <= 1;
             else
               flag_6_2 <= 0;
           
-            if( ( ram[3][31:24] == ast_data_i[7:0]) && ( ast_endofpacket_i != 1 ) )
+            if( ( bank_reg[3][31:24] == ast_data_i[7:0]) && ( ast_endofpacket_i != 1 ) )
               flag_6_1 <= 1;
             else
               flag_6_1 <= 0;  
           
-            if (( flag_6_2 == 1 ) && ( ram[1][23:0] == ast_data_i[63:40] ))
+            if (( flag_6_2 == 1 ) && ( bank_reg[1][23:0] == ast_data_i[63:40] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 7 ))
                   ast_channel_o_tv <= 1;
@@ -280,17 +285,17 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           //mask 7
-            if( ( flag_7_1 == 1 ) &&( {ram[3][15:0],ram[2],ram[1][31:16]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
+            if( ( flag_7_1 == 1 ) &&( {bank_reg[3][15:0],bank_reg[2],bank_reg[1][31:16]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
               flag_7_2 <= 1;
             else
               flag_7_2 <= 0;
           
-            if( ( ram[3][31:16] == ast_data_i[15:0]) && ( ast_endofpacket_i != 1 ) )
+            if( ( bank_reg[3][31:16] == ast_data_i[15:0]) && ( ast_endofpacket_i != 1 ) )
               flag_7_1 <= 1;
             else
               flag_7_1 <= 0;  
           
-            if (( flag_7_2 == 1 ) && ( ram[1][15:0] == ast_data_i[63:48] ))
+            if (( flag_7_2 == 1 ) && ( bank_reg[1][15:0] == ast_data_i[63:48] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 6 ))
                   ast_channel_o_tv <= 1;
@@ -298,17 +303,17 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           //mask 8
-            if( ( flag_8_1 == 1 ) &&( {ram[3][7:0],ram[2],ram[1][31:8]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
+            if( ( flag_8_1 == 1 ) &&( {bank_reg[3][7:0],bank_reg[2],bank_reg[1][31:8]} == ast_data_i) && ( ast_endofpacket_i != 1 ) )
               flag_8_2 <= 1;
             else
               flag_8_2 <= 0;
           
-            if( ( ram[3][31:8] == ast_data_i[23:0]) && ( ast_endofpacket_i != 1 ) )
+            if( ( bank_reg[3][31:8] == ast_data_i[23:0]) && ( ast_endofpacket_i != 1 ) )
               flag_8_1 <= 1;
             else
               flag_8_1 <= 0;  
           
-            if (( flag_8_2 == 1 ) && ( ram[1][7:0] == ast_data_i[63:56] ))
+            if (( flag_8_2 == 1 ) && ( bank_reg[1][7:0] == ast_data_i[63:56] ))
               begin
                 if(( ast_endofpacket_i == 1 ) && ( ast_empty_i <= 5 ))
                   ast_channel_o_tv <= 1;
@@ -316,7 +321,7 @@ always_ff @( posedge clk_i )
                   ast_channel_o_tv <= 1;
               end
           end
-        else if ( ram[0][0] == 0 )
+        else if ( work_on == 0 )
           ast_channel_o_tv <= 1;
           //
       end

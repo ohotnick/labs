@@ -151,6 +151,8 @@ class AVClassPackGen;
     logic [31:0]  wrd_N2;
     logic [31:0]  wrd_N3;
     logic flag_b;
+	
+	logic [11:0][7:0] data_to_send = "hello,world!";
     
     
     integer flag_word;
@@ -161,11 +163,17 @@ class AVClassPackGen;
     integer flag_word_send = 0;
     
     //wrd_N1 = 32'b01101000011001010110110001101100;  //hell h - 01101000
-    wrd_N1 = 32'b01101100011011000110010101101000;
+    //wrd_N1 = 32'b01101100011011000110010101101000;
+	//wrd_N1 = "lleh";
+	wrd_N1 = data_to_send[95:0] >> 64; 
     //wrd_N2 = 32'b01101111001011000111011101101111;  //o,wo
-    wrd_N2 = 32'b01101111011101110010110001101111;
+    //wrd_N2 = 32'b01101111011101110010110001101111;
+	//wrd_N2 = "ow,o";
+	wrd_N2 = data_to_send[63:0] >> 32;
     //wrd_N3 = 32'b01110010011011000110010000100001;  //rld!
-    wrd_N3 = 32'b00100001011001000110110001110010;
+    //wrd_N3 = 32'b00100001011001000110110001110010;
+	//wrd_N3 = "!dlr";
+	wrd_N3 = data_to_send[31:0];
     pack_to_send        = 0;
     //$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
     pack_to_send[95:0]  = {wrd_N1[31:0],wrd_N2[31:0],wrd_N3[31:0]}; 
@@ -177,9 +185,9 @@ class AVClassPackGen;
     pack_to_send        = pack_to_send << slide_word;
     //$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
     
-    $display( "pack_to_send = %b, time %d ns ", pack_to_send[191:128], $time  );
-    $display( "pack_to_send = %b, time %d ns ", pack_to_send[127:64], $time  );
-    $display( "pack_to_send = %b, time %d ns ", pack_to_send[63:0], $time  );
+    $display( "pack_to_send = %s, time %d ns ", pack_to_send[191:128], $time  );
+    $display( "pack_to_send = %s, time %d ns ", pack_to_send[127:64], $time  );
+    $display( "pack_to_send = %s, time %d ns ", pack_to_send[63:0], $time  );
     
     //flag_set_word       = 0;
     
@@ -440,7 +448,7 @@ while( result_queue.size() != 0 )
       begin
         result       = ref_queue.pop_front();
         ref_result   = result_queue.pop_front(); 
-        $display( "1)result     = %d \n2)ref_result = %d 3)time %d ns ",result,ref_result,  $time  );
+       // $display( "1)result     = %S \n2)ref_result = %S 3)time %d ns ",result,ref_result,  $time  );
         
         if( result != ref_result )
           $error("Data mismatch");
@@ -448,7 +456,8 @@ while( result_queue.size() != 0 )
   end
 endtask
 
-
+logic [31:0]test_word;
+logic [11:0][7:0] mem_word = "!dlrow,olleh";
 
 initial
   begin
@@ -461,6 +470,8 @@ initial
     csr_write_i     = 0;
     csr_writedata_i = 0;
     csr_read_i      = 0;
+	
+	test_word       =    mem_word[64:0] >> 32;
     //flag_set_word   = 0;   // (>5) - word, (<2) - wrog word, (2-5) no word
     
     //size_max = 1500;
@@ -490,6 +501,7 @@ initial
                 dut_class.send_pack( size_max, size_min, flag_set_word );
           end   
         flag_brk = 1;
+		$display( "break point ------- " );
       end
       begin                                     //get
         forever
@@ -505,11 +517,12 @@ initial
       end         
     join
       begin
+	    $display( "start compare ------- " );
         compare( ref_queue, result_queue );
         $display( "end ------- " );
       end 
   
-        $display( "end ------- " );
+        $display( "end ------- %s", test_word );
  
    
    #5000; 
