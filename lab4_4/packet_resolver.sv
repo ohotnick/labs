@@ -41,7 +41,7 @@ logic ast_valid_o_tv;
 logic [63:0]ast_data_o_tv;
 logic ast_startofpacket_o_tv;
 logic ast_endofpacket_o_tv;
-logic [1:0]ast_empty_o_tv;
+logic [2:0]ast_empty_o_tv;
 logic flag_read;
 logic flag_channel;
 logic flag_SOP;

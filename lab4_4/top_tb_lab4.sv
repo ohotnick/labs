@@ -138,165 +138,227 @@ endinterface
 class AVClassPackGen;
 
   virtual avalon_st_if.av_st_snk  av_st_if_v;
+  virtual avalon_st_if            av_st_if_v_get;
 
-  function new( virtual avalon_st_if.av_st_snk  av_st_if_v_new );
-    av_st_if_v = av_st_if_v_new;
+  function new( virtual avalon_st_if.av_st_snk  av_st_if_v_new, virtual avalon_st_if  av_st_if_v_get_new );
+    av_st_if_v     = av_st_if_v_new;
+    av_st_if_v_get = av_st_if_v_get_new;
   endfunction
   
   
-  
-  task send_pack( integer size_max, integer size_min, integer flag_set_word );  // (>5) - word, (<2) - wrog word, (2-5) no word
-    logic [191:0] pack_to_send;
-    logic [31:0]  wrd_N1;
-    logic [31:0]  wrd_N2;
-    logic [31:0]  wrd_N3;
-    logic flag_b;
-	
-	logic [11:0][7:0] data_to_send = "hello,world!";
+  task send_pack( logic [7:0] data_queue [$], integer length_packs_queue [$] );  
     
+    logic [11:0][7:0] data_to_send = "hello,world!";
     
-    integer flag_word;
-    integer i_size_pack    = 0;
-    integer i_send_pack    = 0;
-    integer slide_word     = 0;
-    integer x_send_pack    = 0;
-    integer flag_word_send = 0;
+    logic   flag_b, flag_a;
+    logic [63:0]  send_data;
+    integer size_pack;
     
-    //wrd_N1 = 32'b01101000011001010110110001101100;  //hell h - 01101000
-    //wrd_N1 = 32'b01101100011011000110010101101000;
-	//wrd_N1 = "lleh";
-	wrd_N1 = data_to_send[95:0] >> 64; 
-    //wrd_N2 = 32'b01101111001011000111011101101111;  //o,wo
-    //wrd_N2 = 32'b01101111011101110010110001101111;
-	//wrd_N2 = "ow,o";
-	wrd_N2 = data_to_send[63:0] >> 32;
-    //wrd_N3 = 32'b01110010011011000110010000100001;  //rld!
-    //wrd_N3 = 32'b00100001011001000110110001110010;
-	//wrd_N3 = "!dlr";
-	wrd_N3 = data_to_send[31:0];
-    pack_to_send        = 0;
-    //$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
-    pack_to_send[95:0]  = {wrd_N1[31:0],wrd_N2[31:0],wrd_N3[31:0]}; 
-    //$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
-    //pack_to_send        = pack_to_send << (8*$random_range(7,0));
-    slide_word          = 8*($urandom%7);
-    //pack_to_send        = pack_to_send << 8*8;
-    //$display( "slide_word = %d, time %d ns ", slide_word, $time  );
-    pack_to_send        = pack_to_send << slide_word;
-    //$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
-    
-    $display( "pack_to_send = %s, time %d ns ", pack_to_send[191:128], $time  );
-    $display( "pack_to_send = %s, time %d ns ", pack_to_send[127:64], $time  );
-    $display( "pack_to_send = %s, time %d ns ", pack_to_send[63:0], $time  );
-    
-    //flag_set_word       = 0;
-    
-    //i_size_pack = $random_range(size_max,size_min); //$random_range(1514,60)
-    i_size_pack = $urandom%size_max;
-    if(i_size_pack <= size_min)
-      i_size_pack = size_min;
-    i_send_pack = 0;
-    //flag_word   = $urandom%10+5;
-    flag_word   = flag_set_word;
-    //$display( "flag_word = %d, i_size_pack = %d, time %d ns ", flag_word, i_size_pack, $time  );
-    //$display( "pack_to_send = %b, time %d ns ", pack_to_send, $time  );
-    $display( "flag_word = %d, time %d ns ", flag_word, $time  );
-    x_send_pack = $urandom%( i_size_pack - ( 12 + 16 ));
-    if(flag_word > 5)
-      flag_word_send = 0;
-    else if(flag_word < 2)
-      flag_word_send = 8;
-    else
-      flag_word_send = 20;
-      
-    av_st_if_v.data          = 0;
-    av_st_if_v.valid         = 0;
-    av_st_if_v.startofpacket = 0;
-    av_st_if_v.endofpacket   = 0;
-    av_st_if_v.empty         = 0;
-    flag_b                   = 0;
-    //av_st_if_v.clk
-    //av_st_if_v. ready
+    flag_b = 0;
+    flag_a = 0;
     
       forever
         begin
+          //$display( "Start send %d ns ", $time  );
           @(posedge av_st_if_v.clk)
             begin
-              //$display( "i_send_pack = %d, i_size_pack = %d, time %d ns ", i_send_pack,i_size_pack, $time  );
-              //#195;
-              if( av_st_if_v.ready == 0 )
-                av_st_if_v.startofpacket <= 0;
               
-              if ( flag_b == 1 )
+              
+              if(( length_packs_queue.size() == 0)&&(flag_b == 0))
                 begin
-                  if( av_st_if_v.endofpacket == 1 )
-                    av_st_if_v.endofpacket <= 0;
-                  //$display( "break, time %d ns ", $time  );
+                  av_st_if_v.valid       <= 0;
+                  av_st_if_v.endofpacket <= 0;
                   break;
                 end
-              else if( av_st_if_v.ready == 1 )
+              
+            
+              if( flag_b == 0 )
                 begin
-                //$display( "1)i_send_pack = %d, 2)flag_word_send = %d, 3)x_send_pack %d, 4)i_size_pack %d,  time %d ns ", i_send_pack, flag_word_send, x_send_pack, i_size_pack, $time  );
-                if( i_size_pack > (i_send_pack + 8) )
-                  begin
-                    if((i_send_pack >= x_send_pack) && (flag_word_send <= 2))
-                      begin
-                        if( flag_word_send == 0 )
-                          av_st_if_v.data <= pack_to_send[191:128];
-                        if( flag_word_send == 1 )
-                          av_st_if_v.data <= pack_to_send[127:64];
-                        if( flag_word_send == 2 )
-                          begin
-                            av_st_if_v.data <= pack_to_send[63:0];
-                            flag_word_send = flag_word_send+ 20;
-                          end
-                        flag_word_send = flag_word_send + 1;
-                      end
-                    else if((i_send_pack >= x_send_pack) &&(flag_word_send <= 10))
-                      begin
-                        if( flag_word_send == 8 )
-                          av_st_if_v.data <= pack_to_send[191:128] + $urandom%300;
-                        if( flag_word_send == 9 )
-                          av_st_if_v.data <= pack_to_send[127:64]  + $urandom%300;
-                        if( flag_word_send == 10 )
-                          av_st_if_v.data <= pack_to_send[63:0]    + $urandom%300;
-                        flag_word_send = flag_word_send + 1;
-                      end
-                    else
-                      av_st_if_v.data          <= $urandom;
-                        
-                    av_st_if_v.valid           <= 1;
-                    if(i_send_pack == 0)
-                      av_st_if_v.startofpacket <= 1;
-                    else
-                      av_st_if_v.startofpacket <= 0;
-                    //$display( "i_send_pack = %d, time %d ns ", i_send_pack, $time  );
-                    i_send_pack = i_send_pack + 8;
-                  end
-                else
-                  begin
-                    //i_send_pack            = i_send_pack + i_size_pack;
-                    av_st_if_v.data          <= $urandom;
-                    av_st_if_v.endofpacket   <= 1;
-                    av_st_if_v.startofpacket <= 0;
-                    av_st_if_v.empty         <= i_size_pack - i_send_pack;
-                    flag_b                   = 1;
-                  end             
+                  av_st_if_v.data          = 0;
+                  av_st_if_v.valid         = 0;
+                  av_st_if_v.startofpacket = 0;
+                  av_st_if_v.endofpacket   = 0;
+                  av_st_if_v.empty         = 0;
+                  flag_b                   = 1;
+                  send_data                = 0;
+                  $display( "number of pack %d, %d ns ", length_packs_queue.size(), $time  );
+                  size_pack                = length_packs_queue.pop_front();
+                  $display( "Start pack!!! size of pack %d, %d ns ", size_pack, $time  );
                 end
-              else if( av_st_if_v.ready == 0 )
-                 begin
-                   av_st_if_v.valid <= 1;
-                   if( av_st_if_v.endofpacket == 1 )
-                     av_st_if_v.endofpacket <= 0;
-                 end
-               // $display( "flag_b %d, time %d ns ",flag_b , $time  );     
-            end
+              else if( flag_b == 1 )
+                begin
+                
+                  if( flag_a == 0 )
+                    begin
+                      av_st_if_v.startofpacket <= 1;
+                      
+                      send_data[63:56]         = data_queue.pop_front();
+                      send_data[55:48]         = data_queue.pop_front();
+                      send_data[47:40]         = data_queue.pop_front();
+                      send_data[39:32]         = data_queue.pop_front();
+                      send_data[31:24]         = data_queue.pop_front();
+                      send_data[23:16]         = data_queue.pop_front();
+                      send_data[15:8]          = data_queue.pop_front();
+                      send_data[7:0]           = data_queue.pop_front();
 
+                      av_st_if_v.data          <= send_data;
+                      av_st_if_v.valid         <= 1;
+                      flag_a                    = 1;
+                      size_pack                 = size_pack - 8;
+                      $display( "SOP size of pack %d, %d ns ", size_pack, $time  );
+                    end
+                  else if( flag_a == 1 )
+                    begin
+                    
+                      if( av_st_if_v.ready == 1 )
+                        begin
+                       
+                          av_st_if_v.startofpacket <= 0;
+                          if( size_pack <= 8 )
+                            begin
+                              av_st_if_v.endofpacket <= 1;
+                              av_st_if_v.empty       = 8 - size_pack;
+                              $display( "av_st_if_v.empty %d, %d ns ", av_st_if_v.empty, $time  );
+                              flag_a = 0;
+                              flag_b = 0;
+                              
+                              send_data = 0;
+                              
+                              if((8 - size_pack) < 8 )
+                                send_data[63:56]         = data_queue.pop_front();
+                              if((8 - size_pack) < 7 )
+                                send_data[55:48]         = data_queue.pop_front();
+                              if((8 - size_pack) < 6 )
+                                send_data[47:40]         = data_queue.pop_front();
+                              if((8 - size_pack) < 5 )
+                                send_data[39:32]         = data_queue.pop_front();
+                              if((8 - size_pack) < 4 )
+                                send_data[31:24]         = data_queue.pop_front();
+                              if((8 - size_pack) < 3 )
+                                send_data[23:16]         = data_queue.pop_front();
+                              if((8 - size_pack) < 2 )
+                                send_data[15:8]          = data_queue.pop_front();
+                              if((8 - size_pack) < 1 )
+                                send_data[7:0]           = data_queue.pop_front();
+                              
+                             // $display( "Total size 1)data_queue %d, 2)send_data %b ,3) %d %d ns ", data_queue.size(),send_data,(8 - size_pack), $time  );
+                              
+                            end
+                          else
+                            begin
+                              size_pack = size_pack - 8;
+                             // $display( "size of pack %d, %d ns ", size_pack, $time  );
+                           
+                              send_data[63:56]         = data_queue.pop_front();
+                              send_data[55:48]         = data_queue.pop_front();
+                              send_data[47:40]         = data_queue.pop_front();
+                              send_data[39:32]         = data_queue.pop_front();
+                              send_data[31:24]         = data_queue.pop_front();
+                              send_data[23:16]         = data_queue.pop_front();
+                              send_data[15:8]          = data_queue.pop_front();
+                              send_data[7:0]           = data_queue.pop_front();
+                          
+                            end
+
+                          av_st_if_v.data          <= send_data;
+                       
+                        end
+                   
+                    end
+                
+                end
+            end
         end
-    
+      $display( "End send %d ns ", $time  );    
   endtask   
   
-
+  
+  logic [7:0] result_queue [$];
+  
+  task get_pack(  );  
+    
+    integer three_packs;
+    integer size_pack_get;
+    logic   flag_get;
+    three_packs = 561;
+    size_pack_get = 0;
+    flag_get    = 0;
+    $display( "Start get!!!! %d ns ", $time  );
+     forever
+       begin
+         @(posedge av_st_if_v.clk)
+           three_packs = three_packs - 1;
+           //$display( "GET: three_packs %d, %d ns ",three_packs, $time  );
+           //$display( "GET: 1)three_packs %d, 2)av_st_if_v_get.startofpacket %d, 3)av_st_if_v_get.valid %d 4)av_st_if_v_get.data %s %d ns ",three_packs,av_st_if_v_get.startofpacket, av_st_if_v_get.valid, av_st_if_v_get.data, $time  );
+         if((av_st_if_v_get.startofpacket == 1)&&(av_st_if_v_get.valid == 1)&&(flag_get == 0))
+           begin
+             //three_packs   = 561;
+             flag_get      = 1;
+             size_pack_get = size_pack_get + 1;
+             
+             //$display( "GET 1)Data SOP , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
+             
+             result_queue.push_back(av_st_if_v_get.data[63:56]);
+             result_queue.push_back(av_st_if_v_get.data[55:48]);
+             result_queue.push_back(av_st_if_v_get.data[47:40]);
+             result_queue.push_back(av_st_if_v_get.data[39:32]);
+             result_queue.push_back(av_st_if_v_get.data[31:24]);
+             result_queue.push_back(av_st_if_v_get.data[23:16]);
+             result_queue.push_back(av_st_if_v_get.data[15:8]);
+             result_queue.push_back(av_st_if_v_get.data[7:0]);
+             
+             
+           end
+         else if((flag_get == 1)&&(av_st_if_v_get.valid == 1)&&(av_st_if_v_get.endofpacket != 1))
+           begin
+             three_packs   = 561;
+             
+             result_queue.push_back(av_st_if_v_get.data[63:56]);
+             result_queue.push_back(av_st_if_v_get.data[55:48]);
+             result_queue.push_back(av_st_if_v_get.data[47:40]);
+             result_queue.push_back(av_st_if_v_get.data[39:32]);
+             result_queue.push_back(av_st_if_v_get.data[31:24]);
+             result_queue.push_back(av_st_if_v_get.data[23:16]);
+             result_queue.push_back(av_st_if_v_get.data[15:8]);
+             result_queue.push_back(av_st_if_v_get.data[7:0]);
+             
+            //$display( "GET 1)Data mid , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
+             
+           end
+         else if((av_st_if_v_get.endofpacket == 1)&&(av_st_if_v_get.valid == 1)&&(flag_get == 1))
+           begin
+             flag_get = 0;
+             
+             if( 7 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[63:56]);
+             if( 6 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[55:48]);
+             if( 5 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[47:40]);
+             if( 4 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[39:32]);
+             if( 3 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[31:24]);
+             if( 2 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[23:16]);
+             if( 1 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[15:8]);
+             if( 0 >= av_st_if_v_get.empty )
+               result_queue.push_back(av_st_if_v_get.data[7:0]);
+               
+             $display( "GET 1)Data EOF , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
+           
+           end
+           
+         if(three_packs <= 0)
+           begin
+             $display( "End get!!!!!! %d ns ", $time  );
+             break;
+           end
+           
+       end
+   
+  endtask 
         
 endclass
 
@@ -334,24 +396,17 @@ module top_tb_lab4;
   logic flag_get_sw = 0;
   logic flag_get_ow = 0;
   
-  logic [63:0] ref_queue [$];
-  logic [63:0] result_queue [$];
-  
-  integer flag_set_word   = 0;
-/*
-logic rdreq_i_temp;     //send
-logic [(DWIDTH-1):0] data_i_temp;
-logic wrreq_i_temp;
 
-logic [(DWIDTH-1):0] result_queue_q [$];
-logic [(DWIDTH-1):0] result_queue_usedw [$]; */
+  logic [7:0] ref_queue_v [$];
+  logic [7:0] result_queue_v [$];
+  logic [7:0] data_queue_v [$];
+  integer length_packs_queue_v [$];
+  
+ // integer flag_set_word   = 0;
 
   avalon_st_if  av_infs_in(clk);
   avalon_st_if  av_infs_between(clk);
   avalon_st_if  av_infs_out(clk);
-  
-  
-
 
   initial
     begin
@@ -364,81 +419,95 @@ logic [(DWIDTH-1):0] result_queue_usedw [$]; */
         reset<=1'b0;
       #600;
   end
-
-// send data ------------
-task send (  ); 
   
-  //integer flag_set_word   = 0;
-  flag_set_word   = $urandom%12;
-  //$display( "flag_set_word %d, time %d ns ",flag_set_word , $time  );
-  if(flag_set_word > 5)
+  
+// packet generator
+task packet_gen(  integer quantity_pack );
+   //integer length_packs_queue [$]
+   //logic [7:0] data_queue [$]
+   //logic [7:0] ref_queue [$]
+  //logic [11:0][7:0] data_to_send = "hello,world!";
+  logic [11:0][7:0] data_to_send = "!dlrow,olleh";
+  //integer i;
+  integer flag_word;
+  integer flag_wrong_word, wrong_word_num;
+  integer flag_quant_word;
+  integer size_max = 1500;
+  integer size_min = 60;
+  integer place_word;
+  integer i, j, i_size_pack;
+  
+  //quantity_ref_pack = 0;
+  
+  for( i = 0; i < quantity_pack; i = i + 1 )
     begin
-      //count_send = count_send + 1;
-      $display( "!!!!!!!!!!!!1)count_send = %d, 2)flag_set_word = %d time %d ns ",count_send, flag_set_word , $time  );
-    end
-  //dut_class.send_pack( size_max, size_min, flag_set_word );
-  
-endtask
-
-
-// get data ---------
-task get (  );
-        
-  @(posedge clk)
-    begin  
-      //$display( "!!!get: av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
-      //$display( "!!!!1)count_send:%d, %d ns",count_send, $time);
-      //if( count_send >= 1 )
-      if(( flag_set_word > 5 )&&( av_infs_in.valid == 1 ))
-      //if( av_infs_in.valid == 1 )
-      if( av_infs_in.startofpacket == 1 )
-        begin
-          flag_get_sw = 1;
-          ref_queue.push_back( av_infs_in.data );   
-          //$display( "???get sop: av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
-        end
-      else if(( flag_get_sw == 1 )&&(av_infs_in.endofpacket != 1))
-        ref_queue.push_back( av_infs_in.data );
-      else if( av_infs_in.endofpacket == 1 )
-        begin
-          flag_get_sw = 0;
-          ref_queue.push_back( av_infs_in.data );
-          count_send = count_send + 1;
-          //$display( "+++get eop: av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
-        end
-         
-      if(( av_infs_out.sb_2.valid == 1 ) && ( count_send >= 1 ))
-      begin
+      flag_word       = $urandom%10;           //word in pack?
+      flag_wrong_word = $urandom%10;           //wrong word?
+      wrong_word_num  = $urandom%11;
+      flag_quant_word = $urandom%10;
       
-      if( av_infs_out.sb_2.startofpacket == 1 )
+      i_size_pack = $urandom%size_max;
+      if(i_size_pack <= size_min)
+        i_size_pack = size_min;
+      length_packs_queue_v.push_back( i_size_pack );
+      $display( "Gen size %d, %d ns ", length_packs_queue_v.size(), $time  );
+      
+      place_word = $urandom%(i_size_pack-12);
+      
+    //  if((flag_word > 3)&&(flag_wrong_word <= 8))
+    //    quantity_ref_pack = quantity_ref_pack + 1;
+      $display( "IF flag_wrong_word %d, wrong_word_num %d, flag_word %d, %d ns ", flag_wrong_word,wrong_word_num,flag_word, $time  );
+        
+      for( j = 0; j < i_size_pack  ; j = j + 1 )
         begin
-          flag_get_ow = 1;
-          result_queue.push_back( av_infs_out.sb_2.data );
-          //$display( "!!!get: av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
+          if((( j >= place_word )&&( j < (place_word + 12)))&&(flag_word > 3))
+            if((flag_wrong_word > 8)&&(wrong_word_num == (j - place_word) ))
+              begin
+                data_queue_v.push_back( (((data_to_send[11:0] ) >> (8 * ( j - place_word ))) + $urandom%250) );
+              $display( "Wrong char!!!!!! j %d, %d ns ",j, $time  );
+              end
+            else
+              begin
+                data_queue_v.push_back( (data_to_send[11:0] >> (8 * ( j - place_word ))) );
+                //$display( "Gen data_to_send %s, %d ns ", (data_to_send[11:0] >> (8 * ( j - place_word ))), $time  );
+                $display( "Gen word pack i_size_pack %d, %d ns ", i_size_pack, $time  );
+                if((flag_word > 3)&&((flag_wrong_word <= 8)))
+                  ref_queue_v.push_back(data_queue_v[$]);
+                
+              end
+          else
+            begin
+              data_queue_v.push_back( $urandom%255 );
+              if((flag_word > 3)&&((flag_wrong_word <= 8)))
+                begin
+                  ref_queue_v.push_back(data_queue_v[$]);
+               //$display( "Gen data_queue_v[$] %s, %d ns ", data_queue_v[$], $time  );
+                end
+            end
+            
+            if((flag_word > 3)&&((flag_wrong_word <= 8)))
+              $display( "Wrd ref_queue_v [$] %s, %d ns ", ref_queue_v[$], $time  );
+              $display( "Gen data_queue_v[$] %s, %d ns ", data_queue_v[$], $time  );
+            /*
+          if((flag_word > 3)&&((flag_wrong_word <= 8)))
+            begin
+              ref_queue_v.push_back(data_queue_v[$]);
+              //$display( "Gen data_queue_v[$] %s, %d ns ", data_queue_v[$], $time  );
+            end
+            */
         end
-      else if(( flag_get_ow == 1 )&&(av_infs_out.sb_2.endofpacket != 1))
-        begin
-        result_queue.push_back( av_infs_out.sb_2.data );
-        //$display( "???get: av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
-        end
-      else if( av_infs_out.sb_2.endofpacket == 1 )
-        begin
-          result_queue.push_back( av_infs_out.sb_2.data );
-          flag_get_ow = 0;
-          count_send = count_send - 1;
-          //$display( "+++get: av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
-        end
-        //$display( "++++++1)count_send:%d, %d ns",count_send, $time);
-      end
-    end   
-
-endtask
-
+    end
+  
+endtask  
+  
 //compare data ------------
-task compare ( logic [63:0] ref_queue [$], logic [63:0] result_queue [$] );
+task compare ( logic [7:0] ref_queue [$], logic [7:0] result_queue [$] );
 
-  logic [63:0] result;
-  logic [63:0] ref_result;
+  logic [7:0] result;
+  logic [7:0] ref_result;
+  
+  $display( "Compare ref_queue_v   %d, %d ns ", ref_queue.size(), $time  );
+  $display( "Compare result_queue  %d, %d ns ", result_queue.size(), $time  );
 
 while( result_queue.size() != 0 )
   begin
@@ -448,7 +517,7 @@ while( result_queue.size() != 0 )
       begin
         result       = ref_queue.pop_front();
         ref_result   = result_queue.pop_front(); 
-       // $display( "1)result     = %S \n2)ref_result = %S 3)time %d ns ",result,ref_result,  $time  );
+        $display( "1)result     = %S \n2)ref_result = %S 3)time %d ns ",result,ref_result,  $time  );
         
         if( result != ref_result )
           $error("Data mismatch");
@@ -463,62 +532,59 @@ initial
   begin
 
     AVClassPackGen dut_class;
-    dut_class = new( av_infs_in );
+    dut_class = new( av_infs_in, av_infs_out );
     #1000;
 
     csr_address_i   = 0;
     csr_write_i     = 0;
     csr_writedata_i = 0;
     csr_read_i      = 0;
-	
-	test_word       =    mem_word[64:0] >> 32;
-    //flag_set_word   = 0;   // (>5) - word, (<2) - wrog word, (2-5) no word
     
-    //size_max = 1500;
-    //size_min = 100;
+    test_word       =    mem_word[64:0] >> 32;
     
-    
-    //$monitor( "av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
-    //$monitor( "av_infs_between: 1)data_i:%d 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
-    //$monitor( "av_infs_out: 1)data_i:%d 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
+    //$monitor( "av_infs_in: 1)data_i:%d 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
+    //$monitor( "av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
+    //$monitor( "av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
     
     //$monitor( "av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns /n av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time ,av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
     
     av_infs_out.ready = 1;
-    //dut_class.send_pack( size_max, size_min, 7 );
-    //dut_class.send_pack( size_max, size_min, 5 );
-    //dut_class.send_pack( size_max, size_min, 1 );
-    //dut_class.send_pack( size_max, size_min, 5 );
     
     flag_brk = 0;
     //send( size_min, size_max );
+    $display( "Size before gen %d, %d ns ", length_packs_queue_v.size(), $time  );
+    packet_gen( 10 );
+    $display( "Size after gen %d, %d ns ", length_packs_queue_v.size(), $time  );
+    $display( "Size data_queue_v after gen %d, %d ns ", data_queue_v.size(), $time  );
+    $display( "Size ref_queue_v after gen %d, %d ns ", ref_queue_v.size(), $time  );
 
      fork
       begin                                  // send
-        for( int i = 0; i < 10 ; i++ )
+        //for( int i = 0; i < 10 ; i++ )
           begin     
-                send( ); 
-                dut_class.send_pack( size_max, size_min, flag_set_word );
+            dut_class.send_pack( data_queue_v, length_packs_queue_v  );
           end   
-        flag_brk = 1;
-		$display( "break point ------- " );
+       // flag_brk = 1;
+        $display( "break point ------- " );
       end
       begin                                     //get
-        forever
+        //forever
           begin
-          if (( flag_brk == 1 ) && ( count_send == 0 ))
+         // if (( flag_brk == 1 ) && ( count_send == 0 ))
           //if ( $time >= 10000 )
-              break;
+            //  break;
               begin
-                get();
+                dut_class.get_pack(  );
+                $display( "!!!Get dut_class.result_queue  %d, %d ns ", dut_class.result_queue.size(), $time  );
                 //$display( "1)count_send = %d, 2) flag_brk = %d time %d ns ",count_send, flag_brk , $time  );
               end           
           end
       end         
     join
       begin
-	    $display( "start compare ------- " );
-        compare( ref_queue, result_queue );
+        $display( "start compare ------- " );
+        //compare( ref_queue_v, result_queue_v );
+        compare( dut_class.result_queue, ref_queue_v );
         $display( "end ------- " );
       end 
   
