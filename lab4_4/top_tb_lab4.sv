@@ -463,7 +463,7 @@ task packet_gen(  integer quantity_pack );
           if((( j >= place_word )&&( j < (place_word + 12)))&&(flag_word > 3))
             if((flag_wrong_word > 8)&&(wrong_word_num == (j - place_word) ))
               begin
-                data_queue_v.push_back( (((data_to_send[11:0] ) >> (8 * ( j - place_word ))) + $urandom%250) );
+                data_queue_v.push_back( (((data_to_send[11:0] ) >> (8 * ( j - place_word ))) + $urandom%250 + 1) );
               $display( "Wrong char!!!!!! j %d, %d ns ",j, $time  );
               end
             else
