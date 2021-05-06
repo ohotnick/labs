@@ -296,7 +296,7 @@ class AVClassPackGen;
              flag_get      = 1;
              size_pack_get = size_pack_get + 1;
              
-             //$display( "GET 1)Data SOP , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
+             $display( "GET 1)Data SOP , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
              
              result_queue.push_back(av_st_if_v_get.data[63:56]);
              result_queue.push_back(av_st_if_v_get.data[55:48]);
@@ -322,7 +322,7 @@ class AVClassPackGen;
              result_queue.push_back(av_st_if_v_get.data[15:8]);
              result_queue.push_back(av_st_if_v_get.data[7:0]);
              
-            //$display( "GET 1)Data mid , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
+           $display( "GET 1)Data mid , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
              
            end
          else if((av_st_if_v_get.endofpacket == 1)&&(av_st_if_v_get.valid == 1)&&(flag_get == 1))
@@ -347,6 +347,7 @@ class AVClassPackGen;
                result_queue.push_back(av_st_if_v_get.data[7:0]);
                
              $display( "GET 1)Data EOF , 2)result_queue.size() %d,  %d ns ",result_queue.size(), $time  );
+             $display( "GET av_st_if_v_get.empty %d,  %d ns ",av_st_if_v_get.empty, $time  );
            
            end
            
@@ -407,6 +408,15 @@ module top_tb_lab4;
   avalon_st_if  av_infs_in(clk);
   avalon_st_if  av_infs_between(clk);
   avalon_st_if  av_infs_out(clk);
+  
+  logic between_ready;
+  logic [(64-1):0] between_data;
+  logic between_valid;
+  logic between_startofpacket;
+  logic between_endofpacket;
+  logic [($clog2(64/8)-1):0]between_empty;
+  logic between_channel;
+
 
   initial
     begin
@@ -470,7 +480,7 @@ task packet_gen(  integer quantity_pack );
               begin
                 data_queue_v.push_back( (data_to_send[11:0] >> (8 * ( j - place_word ))) );
                 //$display( "Gen data_to_send %s, %d ns ", (data_to_send[11:0] >> (8 * ( j - place_word ))), $time  );
-                $display( "Gen word pack i_size_pack %d, %d ns ", i_size_pack, $time  );
+                //$display( "Gen word pack i_size_pack %d, %d ns ", i_size_pack, $time  );
                 if((flag_word > 3)&&((flag_wrong_word <= 8)))
                   ref_queue_v.push_back(data_queue_v[$]);
                 
@@ -485,9 +495,10 @@ task packet_gen(  integer quantity_pack );
                 end
             end
             
-            if((flag_word > 3)&&((flag_wrong_word <= 8)))
-              $display( "Wrd ref_queue_v [$] %s, %d ns ", ref_queue_v[$], $time  );
-              $display( "Gen data_queue_v[$] %s, %d ns ", data_queue_v[$], $time  );
+            //if((flag_word > 3)&&((flag_wrong_word <= 8)))
+              //$display( "Wrd ref_queue_v [$] %s, %d ns ", ref_queue_v[$], $time  );
+              //$display( "Gen data_queue_v[$] %s, %d ns ", data_queue_v[$], $time  );
+            
             /*
           if((flag_word > 3)&&((flag_wrong_word <= 8)))
             begin
@@ -517,13 +528,64 @@ while( result_queue.size() != 0 )
       begin
         result       = ref_queue.pop_front();
         ref_result   = result_queue.pop_front(); 
-        $display( "1)result     = %S \n2)ref_result = %S 3)time %d ns ",result,ref_result,  $time  );
+        //$display( "1)result     = %S \n2)ref_result = %S 3)time %d ns ",result,ref_result,  $time  );
         
         if( result != ref_result )
           $error("Data mismatch");
       end
   end
 endtask
+
+
+task send_MM ();
+ 
+  logic [11:0][7:0] mem_data = "hello,world!";
+  logic flag_send_MM = 0;
+ 
+  //bank_reg[3] = mem_data[95:0] >> 64;  
+  //bank_reg[2] = mem_data[63:0] >> 32;
+  //bank_reg[1] = mem_data[31:0];
+  //bank_reg[0] = 32'b00000000000000000000000000000001;  //1-ON 2-OFF
+  
+  
+  csr_write_i     = 1; 
+  csr_address_i   = 0;
+  csr_address_i   = 0;
+  csr_writedata_i = 32'b00000000000000000000000000000001;
+  forever
+    begin
+    
+    @(posedge clk)
+      if(( csr_waitrequest_o == 1 )&&(flag_send_MM == 0))
+        flag_send_MM = 1;
+      if(( csr_waitrequest_o == 0 )&&(flag_send_MM == 1))
+        begin
+          csr_address_i = csr_address_i + 1;
+          flag_send_MM  = 0;
+        end
+    if( csr_address_i == 1 )
+      csr_writedata_i = mem_data[31:0];
+    if( csr_address_i == 2 )
+      csr_writedata_i = mem_data[63:0] >> 32;
+    if( csr_address_i == 3 )
+      csr_writedata_i = mem_data[95:0] >> 64; 
+      
+    if( csr_address_i == 3 )
+      csr_write_i <= 0;
+    
+    if( csr_write_i == 0 )
+      begin
+        break;
+      end
+    end
+  
+  #500;
+  $display( "End init %d ns ", $time  );
+  
+  
+  
+endtask
+
 
 logic [31:0]test_word;
 logic [11:0][7:0] mem_word = "!dlrow,olleh";
@@ -542,9 +604,9 @@ initial
     
     test_word       =    mem_word[64:0] >> 32;
     
-    //$monitor( "av_infs_in: 1)data_i:%d 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
-    //$monitor( "av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
-    //$monitor( "av_infs_out: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
+    //$monitor( "av_infs_in: 1)data_i:%s 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time);
+    //$monitor( "av_infs_between: 1)data_i:%s 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
+    //$monitor( "av_infs_out: 1)data_i:%s 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns",av_infs_out.sb_2.data, av_infs_out.sb_2.valid, av_infs_out.sb_2.startofpacket, av_infs_out.sb_2.endofpacket, av_infs_out.sb_2.empty, av_infs_out.sb_2.ready, $time);
     
     //$monitor( "av_infs_in: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7) %d ns /n av_infs_between: 1)data_i:%b 2)valid:%d 3)startofpacket:%d 4)endofpacket:%d 5)empty:%d 6)ready:%d 7)channel:%d 8) %d ns",av_infs_in.data, av_infs_in.valid, av_infs_in.startofpacket, av_infs_in.endofpacket, av_infs_in.empty, av_infs_in.ready, $time ,av_infs_between.sb_1.data, av_infs_between.sb_1.valid, av_infs_between.sb_1.startofpacket, av_infs_between.sb_1.endofpacket, av_infs_between.sb_1.empty, av_infs_between.sb_1.ready, av_infs_between.sb_1.channel, $time);
     
@@ -557,6 +619,8 @@ initial
     $display( "Size after gen %d, %d ns ", length_packs_queue_v.size(), $time  );
     $display( "Size data_queue_v after gen %d, %d ns ", data_queue_v.size(), $time  );
     $display( "Size ref_queue_v after gen %d, %d ns ", ref_queue_v.size(), $time  );
+    
+    send_MM ();
 
      fork
       begin                                  // send
@@ -621,6 +685,7 @@ initial
                    .ast_ready_o         (av_infs_in.ready),
 
                    //Avalon-ST Source
+                   /*
                    .ast_ready_i         (av_infs_between.sb_1.ready),
 
                    .ast_data_o          (av_infs_between.sb_1.data),
@@ -628,7 +693,16 @@ initial
                    .ast_startofpacket_o (av_infs_between.sb_1.startofpacket),
                    .ast_endofpacket_o   (av_infs_between.sb_1.endofpacket),
                    .ast_empty_o         (av_infs_between.sb_1.empty),
-                   .ast_channel_o       (av_infs_between.sb_1.channel)
+                   .ast_channel_o       (av_infs_between.sb_1.channel)*/
+                   .ast_ready_i         (between_ready),
+
+                   .ast_data_o          (between_data),
+                   .ast_valid_o         (between_valid),
+                   .ast_startofpacket_o (between_startofpacket),
+                   .ast_endofpacket_o   (between_endofpacket),
+                   .ast_empty_o         (between_empty),
+                   .ast_channel_o       (between_channel)
+                   
 );
                 
   packet_resolver  packet_resolver_dut(
@@ -636,6 +710,7 @@ initial
                    .srst_i   (reset),
 
                    //Avalon-ST Sink
+                   /*
                    .ast_data_i          (av_infs_between.data),
                    .ast_valid_i         (av_infs_between.valid),
                    .ast_startofpacket_i (av_infs_between.startofpacket),
@@ -643,7 +718,16 @@ initial
                    .ast_empty_i         (av_infs_between.empty),
                    .ast_channel_i       (av_infs_between.channel),
 
-                   .ast_ready_o         (av_infs_between.ready),
+                   .ast_ready_o         (av_infs_between.ready),*/
+                   
+                   .ast_data_i          (between_data),
+                   .ast_valid_i         (between_valid),
+                   .ast_startofpacket_i (between_startofpacket),
+                   .ast_endofpacket_i   (between_endofpacket),
+                   .ast_empty_i         (between_empty),
+                   .ast_channel_i       (between_channel),
+
+                   .ast_ready_o         (between_ready),
 
                    //Avalon-ST Source
                    .ast_ready_i         (av_infs_out.sb_2.ready),

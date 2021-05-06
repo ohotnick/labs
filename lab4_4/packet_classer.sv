@@ -40,7 +40,7 @@ logic csr_readdatavalid_o_tv;
 logic csr_waitrequest_o_tv;
 logic work_on;
 
-
+/*
 initial 
   begin
   
@@ -60,6 +60,7 @@ initial
   bank_reg[1] = mem_data[31:0];
   bank_reg[0] = 32'b00000000000000000000000000000001;  //1-ON 2-OFF
   end
+*/
 
 //Avalon-MM page 21 read
 always_ff @( posedge clk_i )
@@ -72,7 +73,7 @@ always_ff @( posedge clk_i )
       end
     else
       begin
-	  
+      
         if( csr_readdatavalid_o_tv == 1 )
           begin
             csr_readdatavalid_o_tv <= 0;
@@ -88,9 +89,9 @@ always_ff @( posedge clk_i )
             csr_waitrequest_o_tv   <= 0;
             csr_readdatavalid_o_tv <= 1;
           end
-		  
-		//Avalon-MM page 21 write  
-		  if( ( csr_write_i == 1 ) && ( csr_waitrequest_o_tv == 0 ) )
+          
+        //Avalon-MM page 21 write  
+          if( ( csr_write_i == 1 ) && ( csr_waitrequest_o_tv == 0 ) )
           begin
             csr_waitrequest_o_tv <= 1;
           end
@@ -99,7 +100,7 @@ always_ff @( posedge clk_i )
             csr_waitrequest_o_tv <= 0;
             bank_reg [csr_address_i]  <= csr_writedata_i;
           end
-		  
+          
       end
   end   
 
@@ -145,20 +146,21 @@ always_ff @( posedge clk_i )
         flag_8_1         <= 0;
         flag_8_2         <= 0;
         ast_channel_o_tv <= 0;
-		work_on          <= bank_reg[0][0];
+        work_on          <= bank_reg[0][0];
       end
     else
       begin
         
-		work_on <= bank_reg[0][0];
-		
+        work_on <= bank_reg[0][0];
+        
         if(( ast_endofpacket_o_tv == 1 )&& ( ast_ready_i == 1 ) && ( work_on == 1 ))
                begin
                 ast_channel_o_tv <= 0;
                 //$display( "7)ast_channel_o_tv %d (if( ast_endofpacket_o_tv == 1 )), time %d ns ",ast_channel_o_tv , $time);
                end
         
-        if (( ast_valid_i == 1 ) && ( ast_ready_i == 1 ) && ( work_on == 1 ))
+        //if (( ast_valid_i == 1 ) && ( ast_ready_i == 1 ) && ( work_on == 1 ))
+        if((( ast_valid_o_tv == 0 )&&( ast_valid_i == 1 )&&( ast_ready_o == 1 )||(( ast_valid_o_tv == 1 )&&( ast_ready_i == 1 )&&( ast_valid_i == 1 )))&& ( work_on == 1 ))
           begin
           //mask 1
           /*
@@ -211,13 +213,7 @@ always_ff @( posedge clk_i )
                 flag_8_2         <= 0;
                 
               end
-              /*
-              if( ast_endofpacket_o_tv == 1 )
-               begin
-                ast_channel_o_tv <= 0;
-                $display( "7)ast_channel_o_tv %d (if( ast_endofpacket_o_tv == 1 )), time %d ns ",ast_channel_o_tv , $time);
-               end
-               */
+
           //mask 2
             if( ( {bank_reg[3],bank_reg[2][31:24]} == ast_data_i[39:0]) && ( ast_endofpacket_i != 1 ) )
               flag_2 <= 1;
@@ -331,21 +327,7 @@ always_ff @( posedge clk_i )
   
 //value
 
-always_ff @( posedge clk_i )
-  begin
-    if(srst_i)
-      begin
-        ast_ready_o_tv <= 0;
-        ast_empty_o_tv <= 0;
-      end
-    else
-      begin
-        if(( ast_ready_i == 0 )||( ast_endofpacket_o_tv == 1))
-          ast_ready_o_tv <= 0;
-        else
-          ast_ready_o_tv <= 1;
-      end
-  end
+
   
 always_ff @( posedge clk_i )
   begin
@@ -353,41 +335,63 @@ always_ff @( posedge clk_i )
       begin
         ast_valid_o_tv <= 0;
         ast_data_o_tv  <= 0;
+        ast_empty_o_tv <= 0;
+        ast_ready_o_tv <= 1;
       end
     else
       begin
       //$display( "packet_classer: 1)ast_startofpacket_o %d, 2)ast_endofpacket_o %d 3)ast_ready_i %d, time %d ns ",ast_startofpacket_o,ast_endofpacket_o, ast_ready_i , $time);
       
-        if( ast_ready_i == 1 )
-          begin
-            if( ast_valid_i == 1 )
-              begin
-                ast_valid_o_tv <= 1;
-                ast_data_o_tv  <= ast_data_i;
-                if( ast_startofpacket_i == 1 )
-                  ast_startofpacket_o_tv <= 1;
-                else
-                  ast_startofpacket_o_tv <= 0;
-                if( ast_endofpacket_i == 1)
-                  begin
-                    ast_endofpacket_o_tv <= 1;
-                    ast_empty_o_tv       <= ast_empty_i;
-                  end
-                else
-                  ast_endofpacket_o_tv <= 0;
-              end
-            else
-              begin
-                ast_valid_o_tv         <= 0;
-                ast_startofpacket_o_tv <= 0;
-                ast_endofpacket_o_tv   <= 0;
-              end
-          end
-        else
-          begin
+      
+      if(( ast_valid_o_tv == 0 )&&( ast_valid_i == 1 )&&( ast_ready_o == 1 ))
+        begin
+          ast_valid_o_tv <= 1;
+          ast_data_o_tv  <= ast_data_i;
+          if( ast_startofpacket_i == 1 )
+            ast_startofpacket_o_tv <= 1;
+          else
             ast_startofpacket_o_tv <= 0;
-            ast_endofpacket_o_tv   <= 0;
-          end
+          if( ast_endofpacket_i == 1)
+            begin
+              ast_endofpacket_o_tv <= 1;
+              ast_empty_o_tv       <= ast_empty_i;
+            end
+          else
+            ast_endofpacket_o_tv <= 0;
+          if( ast_ready_i == 1 )
+            ast_ready_o_tv <= 1;
+          else
+            ast_ready_o_tv <= 0;
+        end
+        
+      else if(( ast_valid_o_tv == 1 )&&( ast_ready_i == 1 ))
+        begin
+          if( ast_valid_i == 1 )
+            begin
+              ast_valid_o_tv <= 1;
+              ast_data_o_tv  <= ast_data_i;
+              ast_ready_o_tv <= 1;
+              if( ast_startofpacket_i == 1 )
+                ast_startofpacket_o_tv <= 1;
+              else
+                ast_startofpacket_o_tv <= 0;
+              if( ast_endofpacket_i == 1)
+                begin
+                  ast_endofpacket_o_tv <= 1;
+                  ast_empty_o_tv       <= ast_empty_i;
+                end
+              else
+                ast_endofpacket_o_tv <= 0;
+            end
+          else if ( ast_valid_i == 0 )
+            begin
+              ast_ready_o_tv         <= 1;
+              ast_valid_o_tv         <= 0;
+              ast_startofpacket_o_tv <= 0;
+              ast_endofpacket_o_tv   <= 0;
+            end
+        end
+          
       end
   end
 
@@ -396,8 +400,7 @@ assign csr_readdatavalid_o = csr_readdatavalid_o_tv;
 assign csr_waitrequest_o   = csr_waitrequest_o_tv;
 assign ast_channel_o       = ast_channel_o_tv;
 //assign ast_ready_o         = ast_ready_i;
-assign ast_ready_o         = ((ast_endofpacket_o_tv == 1)||(ast_endofpacket_i == 1)) ? 1'b0: ast_ready_i;
-//assign ast_ready_o         = ((ast_endofpacket_o_tv == 1)) ? 1'b0: ast_ready_i;
+assign ast_ready_o         = (( ast_valid_o_tv == 1 )&&( ast_ready_i == 0 ))? 1'b0 : ((( ast_valid_i == 1 )&&( ast_ready_i == 1 )) ? 1'b1: ast_ready_o_tv);
 assign ast_valid_o         = ast_valid_o_tv;
 assign ast_data_o          = ast_data_o_tv;
 assign ast_empty_o         = ast_empty_o_tv;
