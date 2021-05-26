@@ -40,28 +40,6 @@ logic csr_readdatavalid_o_tv;
 logic csr_waitrequest_o_tv;
 logic work_on;
 
-/*
-initial 
-  begin
-  
-  logic [11:0][7:0] mem_data = "hello,world!";
-  
-  //bank_reg[3] = 32'b01101000011001010110110001101100;  //hell h - 01101000
- // bank_reg[3] = 32'b01101100011011000110010101101000;  //big endian
-  //bank_reg[3] = "lleh";
-  bank_reg[3] = mem_data[95:0] >> 64;  
-  //bank_reg[2] = 32'b01101111001011000111011101101111;  //o,wo
-  //bank_reg[2] = 32'b01101111011101110010110001101111;
-  //bank_reg[2] = "ow,o";
-  bank_reg[2] = mem_data[63:0] >> 32;
-  //bank_reg[1] = 32'b01110010011011000110010000100001;  //rld!
-  //bank_reg[1] = 32'b00100001011001000110110001110010; 
-  //bank_reg[1] = "!dlr";
-  bank_reg[1] = mem_data[31:0];
-  bank_reg[0] = 32'b00000000000000000000000000000001;  //1-ON 2-OFF
-  end
-*/
-
 //Avalon-MM page 21 read
 always_ff @( posedge clk_i )
   begin
@@ -154,38 +132,12 @@ always_ff @( posedge clk_i )
         work_on <= bank_reg[0][0];
         
         if(( ast_endofpacket_o_tv == 1 )&& ( ast_ready_i == 1 ) && ( work_on == 1 ))
-               begin
-                ast_channel_o_tv <= 0;
-                //$display( "7)ast_channel_o_tv %d (if( ast_endofpacket_o_tv == 1 )), time %d ns ",ast_channel_o_tv , $time);
-               end
-        
-        //if (( ast_valid_i == 1 ) && ( ast_ready_i == 1 ) && ( work_on == 1 ))
-        if((( ast_valid_o_tv == 0 )&&( ast_valid_i == 1 )&&( ast_ready_o == 1 )||(( ast_valid_o_tv == 1 )&&( ast_ready_i == 1 )&&( ast_valid_i == 1 )))&& ( work_on == 1 ))
           begin
-          //mask 1
-          /*
-          $display( "1)flag_1 %d, time %d ns ",flag_1 , $time);
-          $display( "2)flag_2 %d, time %d ns ",flag_2 , $time);
-          $display( "3)flag_3 %d, time %d ns ",flag_3 , $time);
-          $display( "4)flag_4 %d, time %d ns ",flag_4 , $time);
-          $display( "5)flag_5 %d, time %d ns ",flag_5 , $time);
-          $display( "6_1)flag_6_1 %d, time %d ns ",flag_6_1 , $time);
-          $display( "6-2)flag_6_2 %d, time %d ns ",flag_6_2 , $time);
-          $display( "7_1)flag_7_1 %d, time %d ns ",flag_7_1 , $time);
-          $display( "7_2)flag_7_2 %d, time %d ns ",flag_7_2 , $time);
-          $display( "8_1)flag_8_1 %d, time %d ns ",flag_8_1 , $time);
-          $display( "8_2)flag_8_2 %d, time %d ns ",flag_8_2 , $time);*/
-          
-          //$display( "7)flag_8_1 %d, time %d ns ",flag_8_1 , $time);
-          //$display( "7)flag_8_2 %d, time %d ns ",flag_8_2 , $time);
-          //$display( "5)ast_channel_o_tv %d, time %d ns ",ast_channel_o_tv , $time);
-          
-          //$display( "1)ast_endofpacket_o_tv       %b, time %d ns ",ast_endofpacket_o_tv , $time);
-          //$display( "2)ast_data_i       %b, time %d ns ",ast_data_i , $time);
-          //$display( "1)bank_reg[3][31:24]    %b, time %d ns ",bank_reg[3][31:24] , $time);
-          
-          //$display( "1)bank_reg[3]                                     %b, time %d ns ",bank_reg[3] , $time);
-          
+            ast_channel_o_tv <= 0;
+          end
+        
+        if((( ast_valid_o_tv == 0 )&&( ast_valid_i == 1 )&&( ast_ready_o == 1 )||(( ast_valid_o_tv == 1 )&&( ast_ready_i == 1 )&&( ast_valid_i == 1 )))&& ( work_on == 1 ))
+          begin      
           
             if( ( bank_reg[3] == ast_data_i[31:0] ) && ( ast_endofpacket_i != 1 ) )
               flag_1 <= 1;
@@ -319,16 +271,12 @@ always_ff @( posedge clk_i )
           end
         else if ( work_on == 0 )
           ast_channel_o_tv <= 1;
-          //
+
       end
   end
   
-
-  
 //value
 
-
-  
 always_ff @( posedge clk_i )
   begin
     if(srst_i)
@@ -340,9 +288,7 @@ always_ff @( posedge clk_i )
       end
     else
       begin
-      //$display( "packet_classer: 1)ast_startofpacket_o %d, 2)ast_endofpacket_o %d 3)ast_ready_i %d, time %d ns ",ast_startofpacket_o,ast_endofpacket_o, ast_ready_i , $time);
-      
-      
+     
       if(( ast_valid_o_tv == 0 )&&( ast_valid_i == 1 )&&( ast_ready_o == 1 ))
         begin
           ast_valid_o_tv <= 1;
@@ -399,7 +345,6 @@ assign csr_readdata_o      = csr_readdata_o_tv;
 assign csr_readdatavalid_o = csr_readdatavalid_o_tv;
 assign csr_waitrequest_o   = csr_waitrequest_o_tv;
 assign ast_channel_o       = ast_channel_o_tv;
-//assign ast_ready_o         = ast_ready_i;
 assign ast_ready_o         = (( ast_valid_o_tv == 1 )&&( ast_ready_i == 0 ))? 1'b0 : ((( ast_valid_i == 1 )&&( ast_ready_i == 1 )) ? 1'b1: ast_ready_o_tv);
 assign ast_valid_o         = ast_valid_o_tv;
 assign ast_data_o          = ast_data_o_tv;
